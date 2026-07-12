@@ -9,6 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.core.db import Base
 from app.modules.vehicles.models import Vehicle  # noqa: F401
 from app.modules.drivers.models import Driver  # noqa: F401
+from app.modules.trips.models import Trip  # noqa: F401
+from app.modules.maintenance.models import MaintenanceLog  # noqa: F401
 from app.auth.models import User, Role, UserRole  # noqa: F401
 
 config = context.config
