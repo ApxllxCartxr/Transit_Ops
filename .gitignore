@@ -27,6 +27,9 @@ env/
 ENV/
 .env
 .env.*
+logs/
+logs
+run.sh
 
 ## FastAPI / Python tooling
 .pytest_cache/
