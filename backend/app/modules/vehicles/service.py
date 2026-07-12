@@ -1,47 +1,100 @@
-from datetime import date
-from app.core.exceptions import ConflictError, NotFoundError, PermissionDeniedError
+"""
+VehicleService — business logic layer.
+
+All DB access goes through VehicleRepository (async SQLAlchemy 2.0).
+This layer owns:
+  - Business rule enforcement (retired lock, monotonic odometer, etc.)
+  - ID generation
+  - Mapping between Pydantic schemas and ORM models
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import ConflictError
 from app.modules.vehicles.models import Vehicle
+from app.modules.vehicles.repository import VehicleRepository
 from app.modules.vehicles.schemas import VehicleCreate, VehicleUpdate
 from app.shared.enums import VehicleStatus
 
 
 class VehicleService:
-    def __init__(self, session):
-        self.session = session
+    def __init__(self, session: AsyncSession) -> None:
+        self.repo = VehicleRepository(session)
 
+    # ------------------------------------------------------------------
+    # Create
+    # ------------------------------------------------------------------
     async def create_vehicle(self, payload: VehicleCreate) -> Vehicle:
+        # Business rule: cannot create a vehicle already Retired
         if payload.status == VehicleStatus.RETIRED:
-            raise ConflictError("Retired vehicles must be created explicitly")
-        vehicle = Vehicle(**payload.model_dump())
-        self.session.add(vehicle)
-        await self.session.flush()
-        return vehicle
+            raise ConflictError(
+                "Cannot create a vehicle with status Retired",
+                code="VEHICLE_CREATED_RETIRED",
+            )
+        data = payload.model_dump()
+        data["id"] = str(uuid.uuid4())
+        return await self.repo.create(data)
 
-    async def update_vehicle(self, vehicle_id: str, payload: VehicleUpdate) -> Vehicle:
-        vehicle = await self.get_vehicle(vehicle_id)
-        if vehicle.status == VehicleStatus.RETIRED and payload.status != VehicleStatus.RETIRED:
-            raise ConflictError("Retired vehicles cannot be un-retired")
-        if payload.odometer_km is not None and payload.odometer_km < float(vehicle.odometer_km):
-            raise ConflictError("Odometer cannot decrease")
-        for field, value in payload.model_dump(exclude_unset=True).items():
-            setattr(vehicle, field, value)
-        await self.session.flush()
-        return vehicle
-
+    # ------------------------------------------------------------------
+    # Get single
+    # ------------------------------------------------------------------
     async def get_vehicle(self, vehicle_id: str) -> Vehicle:
-        vehicle = self.session.get(Vehicle, vehicle_id)
-        if not vehicle:
-            raise NotFoundError("Vehicle not found")
-        return vehicle
+        return await self.repo.get(vehicle_id)
 
-    async def list_vehicles(self, *, page: int, size: int, status: str | None = None, vehicle_type: str | None = None, region: str | None = None):
-        query = self.session.query(Vehicle)
-        if status:
-            query = query.filter(Vehicle.status == status)
-        if vehicle_type:
-            query = query.filter(Vehicle.vehicle_type == vehicle_type)
-        if region:
-            query = query.filter(Vehicle.region == region)
-        total = query.count()
-        items = query.offset((page - 1) * size).limit(size).all()
-        return total, items
+    # ------------------------------------------------------------------
+    # List with filters + pagination
+    # ------------------------------------------------------------------
+    async def list_vehicles(
+        self,
+        *,
+        page: int,
+        size: int,
+        status: str | None = None,
+        vehicle_type: str | None = None,
+        region: str | None = None,
+    ) -> tuple[int, list[Vehicle]]:
+        return await self.repo.list(
+            page=page,
+            size=size,
+            status=status,
+            vehicle_type=vehicle_type,
+            region=region,
+        )
+
+    # ------------------------------------------------------------------
+    # Partial update
+    # Business rules:
+    #   - Retired vehicles cannot be un-retired (SRS §5.3 / §10)
+    #   - Odometer is monotonic — cannot decrease (SRS §5.3)
+    # ------------------------------------------------------------------
+    async def update_vehicle(self, vehicle_id: str, payload: VehicleUpdate) -> Vehicle:
+        vehicle = await self.repo.get(vehicle_id)
+
+        if vehicle.status == VehicleStatus.RETIRED:
+            if payload.status is not None and payload.status != VehicleStatus.RETIRED:
+                raise ConflictError(
+                    "Retired vehicles cannot be un-retired",
+                    code="VEHICLE_UNRETIRE_FORBIDDEN",
+                )
+
+        if payload.odometer_km is not None and payload.odometer_km < float(
+            vehicle.odometer_km
+        ):
+            raise ConflictError(
+                "Odometer reading cannot decrease",
+                code="VEHICLE_ODOMETER_DECREASE",
+            )
+
+        return await self.repo.update(
+            vehicle_id, payload.model_dump(exclude_unset=True)
+        )
+
+    # ------------------------------------------------------------------
+    # Soft-delete
+    # ------------------------------------------------------------------
+    async def delete_vehicle(self, vehicle_id: str) -> Vehicle:
+        return await self.repo.soft_delete(vehicle_id)
