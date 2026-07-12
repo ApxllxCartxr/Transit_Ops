@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { decodeJwt, normalizeAndMapRole, isSessionExpired, canAccessRoute, ROUTES } from "@/lib/auth-utils";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -8,55 +9,57 @@ export function proxy(request: NextRequest) {
   // Root redirect logic
   if (pathname === "/") {
     if (sessionToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      const payload = decodeJwt(sessionToken);
+      if (payload && !isSessionExpired(payload.exp)) {
+        return NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url));
+      } else {
+        const response = NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
+        response.cookies.delete("better-auth.session_token");
+        return response;
+      }
     } else {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL(ROUTES.LOGIN, request.url));
     }
   }
 
-  const isAuthPage = pathname === "/login";
-  const isProtectedRoute = pathname.startsWith("/dashboard") || 
-                           pathname.startsWith("/vehicles") || 
-                           pathname.startsWith("/drivers") || 
-                           pathname.startsWith("/trips") || 
-                           pathname.startsWith("/maintenance") || 
-                           pathname.startsWith("/expenses") || 
-                           pathname.startsWith("/reports");
+  const isAuthPage = pathname === ROUTES.LOGIN;
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/vehicles") ||
+    pathname.startsWith("/drivers") ||
+    pathname.startsWith("/trips") ||
+    pathname.startsWith("/maintenance") ||
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/reports");
 
-  if (isProtectedRoute && !sessionToken) {
-    const loginUrl = new URL("/login", request.url);
-    // Remember original URL to redirect back after login (optional UX benefit)
-    loginUrl.searchParams.set("callbackUrl", request.url);
-    return NextResponse.redirect(loginUrl);
+  if (isProtectedRoute) {
+    if (!sessionToken) {
+      const loginUrl = new URL(ROUTES.LOGIN, request.url);
+      loginUrl.searchParams.set("callbackUrl", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const payload = decodeJwt(sessionToken);
+    if (!payload || isSessionExpired(payload.exp)) {
+      const loginUrl = new URL(ROUTES.LOGIN, request.url);
+      loginUrl.searchParams.set("callbackUrl", request.url);
+      const response = NextResponse.redirect(loginUrl);
+      response.cookies.delete("better-auth.session_token");
+      return response;
+    }
+
+    // Role-based Access Control via Centralized Permission Matrix
+    const role = normalizeAndMapRole(payload.roles || []);
+    if (!canAccessRoute(role, pathname)) {
+      console.warn(`RBAC violation: User ${payload.email} with role ${role} tried to access ${pathname}`);
+      return NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url));
+    }
   }
 
   if (isAuthPage && sessionToken) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // Basic RBAC Route Protection on the Frontend
-  if (sessionToken && sessionToken.startsWith("mock_session:")) {
-    const [_, email, role] = sessionToken.split(":");
-
-    // Fleet Manager routes: /vehicles, /maintenance
-    // Safety Officer routes: /drivers
-    // Financial Analyst routes: /expenses, /reports, /fuel-logs
-    // Dispatcher routes: /trips
-    // Admins: Full access
-
-    if (role !== "Admin") {
-      if (pathname.startsWith("/drivers") && role !== "SafetyOfficer") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
-      if ((pathname.startsWith("/vehicles") || pathname.startsWith("/maintenance")) && role !== "FleetManager") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
-      if ((pathname.startsWith("/expenses") || pathname.startsWith("/reports")) && role !== "FinancialAnalyst") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
-      if (pathname.startsWith("/trips") && role !== "Dispatcher") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
+    const payload = decodeJwt(sessionToken);
+    if (payload && !isSessionExpired(payload.exp)) {
+      return NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url));
     }
   }
 
