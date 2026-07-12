@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.auth.dependencies import require_roles
+from app.auth.dependencies import require_roles, get_current_user
+from app.auth.models import User
 from app.modules.drivers.schemas import DriverCreate, DriverListResponse, DriverOut, DriverUpdate
 from app.modules.drivers.service import DriverService
 from app.shared.enums import DriverStatus
@@ -76,10 +77,13 @@ async def get_driver(driver_id: str, db: AsyncSession = Depends(get_db)):
     dependencies=[Depends(require_roles("Admin", "Safety Officer"))],
 )
 async def update_driver(
-    driver_id: str, payload: DriverUpdate, db: AsyncSession = Depends(get_db)
+    driver_id: str,
+    payload: DriverUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     service = DriverService(db)
-    driver = await service.update_driver(driver_id, payload)
+    driver = await service.update_driver(driver_id, payload, actor_id=current_user.id)
     return _to_out(driver, service)
 
 

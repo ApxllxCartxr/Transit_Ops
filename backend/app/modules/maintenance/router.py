@@ -10,11 +10,11 @@ service = MaintenanceService()
 
 @router.post("/open", dependencies=[Depends(require_roles("Admin", "Fleet Manager"))])
 async def open_maintenance(vehicle_id: str):
-    return dataclasses.asdict(service.open_maintenance(vehicle_id))
+    return dataclasses.asdict(await service.open_maintenance(vehicle_id))
 
 
 @router.post("/{maintenance_id}/close", dependencies=[Depends(require_roles("Admin", "Fleet Manager"))])
 async def close_maintenance(maintenance_id: str):
-    return dataclasses.asdict(service.close_maintenance(maintenance_id))
+    return dataclasses.asdict(await service.close_maintenance(maintenance_id))
 
 
