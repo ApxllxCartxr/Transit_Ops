@@ -25,7 +25,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message || "Failed to sign in. Please check your credentials.");
+        setError(authError);
       } else {
         router.push("/dashboard");
         router.refresh();
