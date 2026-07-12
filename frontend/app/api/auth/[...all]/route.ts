@@ -151,6 +151,79 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
   }
 
+  if (path === "sign-up/email") {
+    try {
+      // CSRF mitigation check
+      const origin = request.headers.get("origin") || request.headers.get("referer");
+      if (origin && !origin.includes(request.headers.get("host") || "")) {
+        return NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 });
+      }
+
+      const { email, password, name } = await request.json();
+      if (!email || !password || !name) {
+        return NextResponse.json({ error: "Email, password, and name are required." }, { status: 400 });
+      }
+
+      // Forward client's IP to the backend to support rate limiting
+      const clientIp = request.headers.get("x-forwarded-for") || (request as any).ip || "";
+      const headers: Record<string, string> = {};
+      if (clientIp) {
+        headers["X-Forwarded-For"] = clientIp;
+      }
+
+      const backendRes = await callBackend("/api/v1/auth/register", "POST", { email, password, name }, headers);
+
+      if (!backendRes) {
+        return NextResponse.json(
+          { error: "TransitOps authentication server is temporarily unavailable. Please try again later." },
+          { status: 503 }
+        );
+      }
+
+      if (!backendRes.ok) {
+        const errBody = await backendRes.json().catch(() => ({}));
+        let message = errBody.detail || "Sign up failed";
+        return NextResponse.json({ error: message, message }, { status: backendRes.status });
+      }
+
+      const registerData = await backendRes.json();
+      const token = registerData.token;
+      const jwtPayload = decodeJwt(token);
+
+      const response = NextResponse.json({
+        session: {
+          id: token,
+          userId: registerData.user.id,
+          expiresAt: jwtPayload ? new Date(jwtPayload.exp * 1000).toISOString() : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          token: token,
+        },
+        user: {
+          id: registerData.user.id,
+          email: registerData.user.email,
+          name: registerData.user.full_name,
+          role: normalizeAndMapRole(registerData.user.roles),
+          image: null,
+        },
+      });
+
+      // Write secure cookie
+      const isProd = process.env.NODE_ENV === "production";
+      const maxAgeSeconds = jwtPayload ? jwtPayload.exp - Math.floor(Date.now() / 1000) : 3600;
+
+      response.cookies.set("better-auth.session_token", token, {
+        httpOnly: true,
+        path: "/",
+        maxAge: maxAgeSeconds > 0 ? maxAgeSeconds : 3600,
+        sameSite: "lax",
+        secure: isProd,
+      });
+
+      return response;
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid request payload format" }, { status: 400 });
+    }
+  }
+
   if (path === "sign-out") {
     const sessionToken = request.cookies.get("better-auth.session_token")?.value;
     if (sessionToken) {

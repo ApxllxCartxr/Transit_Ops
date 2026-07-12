@@ -18,7 +18,6 @@ import {
   Menu,
   X,
   User,
-  Loader2,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,33 +30,22 @@ export default function LayoutShell({ children }: LayoutShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: sessionState, isPending } = authClient.useSession();
-  
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 
-  // Initialize Dark Mode
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Initialize theme from data-theme attribute (set by blocking script in layout.tsx)
   useEffect(() => {
-    const isDark =
-      localStorage.getItem("darkMode") === "true" ||
-      (!localStorage.getItem("darkMode") &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    const current = document.documentElement.getAttribute("data-theme");
+    setDarkMode(current !== "light");
   }, []);
 
   const toggleDarkMode = () => {
     const nextDark = !darkMode;
     setDarkMode(nextDark);
-    localStorage.setItem("darkMode", String(nextDark));
-    if (nextDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    const nextTheme = nextDark ? "dark" : "light";
+    localStorage.setItem("theme", nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
   const handleSignOut = async () => {
@@ -68,10 +56,14 @@ export default function LayoutShell({ children }: LayoutShellProps) {
 
   if (isPending) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading TransitOps...</p>
+      <div className="flex h-screen w-screen items-center justify-center bg-surface-0">
+        <div className="flex flex-col items-center gap-4">
+          {/* Content-shaped skeleton loader per DESIGN.md §10 */}
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-[10px] animate-shimmer" />
+            <div className="h-4 w-32 rounded animate-shimmer" />
+          </div>
+          <p className="text-body-sm text-text-secondary">Loading TransitOps…</p>
         </div>
       </div>
     );
@@ -80,7 +72,7 @@ export default function LayoutShell({ children }: LayoutShellProps) {
   const user = sessionState?.user;
   const role = (user as any)?.role || "FleetManager";
 
-  // Navigation Links definition with RBAC checks
+  // Navigation Links with RBAC checks
   const allNavigationItems = [
     {
       name: "Dashboard",
@@ -89,86 +81,89 @@ export default function LayoutShell({ children }: LayoutShellProps) {
       roles: ["Admin", "FleetManager", "Dispatcher", "SafetyOfficer", "FinancialAnalyst"],
     },
     {
-      name: "Vehicles Registry",
+      name: "Vehicles",
       href: "/vehicles",
       icon: Car,
-      roles: ["Admin", "FleetManager", "Dispatcher"], // Dispatchers have read access
+      roles: ["Admin", "FleetManager", "Dispatcher"],
     },
     {
-      name: "Driver Roster",
+      name: "Drivers",
       href: "/drivers",
       icon: Users,
-      roles: ["Admin", "SafetyOfficer", "Dispatcher"], // Dispatchers have read access
+      roles: ["Admin", "SafetyOfficer", "Dispatcher"],
     },
     {
-      name: "Trips Dispatch",
+      name: "Trips",
       href: "/trips",
       icon: Navigation,
       roles: ["Admin", "Dispatcher"],
     },
     {
-      name: "Maintenance Logs",
+      name: "Maintenance",
       href: "/maintenance",
       icon: Wrench,
       roles: ["Admin", "FleetManager"],
     },
     {
-      name: "Fuel & Expenses",
+      name: "Expenses",
       href: "/expenses",
       icon: Receipt,
       roles: ["Admin", "FinancialAnalyst"],
     },
     {
-      name: "Reports & Analytics",
+      name: "Reports",
       href: "/reports",
       icon: BarChart3,
       roles: ["Admin", "FinancialAnalyst", "FleetManager"],
     },
   ];
 
-  // Filter items visible to current user's role
   const navigationItems = allNavigationItems.filter((item) =>
     item.roles.includes(role)
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      
-      {/* Mobile Sidebar Overlay */}
+    <div className="flex h-screen overflow-hidden bg-surface-0 text-text-primary">
+
+      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar Component */}
+      {/* ── Sidebar (DESIGN.md §7.1) ────────────────────────── */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 transition-transform duration-300 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-surface-1 border-r border-border-subtle transition-transform duration-[var(--dur-base)] lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Brand logo header */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800">
+        {/* Brand header — 64px */}
+        <div className="flex h-16 shrink-0 items-center justify-between px-4 border-b border-border-subtle">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md shadow-primary/20">
-              <Truck className="h-6 w-6" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-accent text-white">
+              <Truck className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <span className="text-[15px] font-semibold tracking-tight text-text-primary">
               TransitOps
             </span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
+            className="rounded-[8px] p-1.5 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors duration-[var(--dur-fast)] lg:hidden"
+            aria-label="Close sidebar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Navigation list */}
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-0.5">
+          <div className="text-overline text-text-tertiary px-3 mb-3">
+            Navigation
+          </div>
           {navigationItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -176,13 +171,17 @@ export default function LayoutShell({ children }: LayoutShellProps) {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                  "group relative flex items-center gap-3 rounded-[8px] px-3 h-9 text-[14px] font-medium transition-colors duration-[var(--dur-fast)]",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/10"
-                    : "text-slate-650 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                    ? "bg-surface-3 text-text-primary"
+                    : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
                 )}
               >
-                <item.icon className="h-5 w-5 shrink-0" />
+                {/* Active indicator — 2px accent left bar */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full bg-accent" />
+                )}
+                <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.5} />
                 {item.name}
               </a>
             );
@@ -190,19 +189,19 @@ export default function LayoutShell({ children }: LayoutShellProps) {
         </nav>
 
         {/* User profile & controls footer */}
-        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+        <div className="border-t border-border-subtle p-3">
           {user && (
-            <div className="mb-4 flex items-center gap-3 px-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                <User className="h-5 w-5" />
+            <div className="mb-3 flex items-center gap-3 px-2 py-1.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-3 text-text-secondary">
+                <User className="h-4 w-4" strokeWidth={1.5} />
               </div>
-              <div className="overflow-hidden">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+              <div className="overflow-hidden flex-1 min-w-0">
+                <p className="truncate text-[13px] font-semibold text-text-primary">
                   {user.name}
                 </p>
-                <div className="flex items-center gap-1.5">
-                  <Shield className="h-3 w-3 text-primary" />
-                  <span className="text-[11px] font-medium text-primary uppercase tracking-wider">
+                <div className="flex items-center gap-1">
+                  <Shield className="h-3 w-3 text-accent" strokeWidth={1.5} />
+                  <span className="text-overline text-accent">
                     {role}
                   </span>
                 </div>
@@ -214,50 +213,50 @@ export default function LayoutShell({ children }: LayoutShellProps) {
             <button
               onClick={toggleDarkMode}
               title="Toggle theme"
-              className="flex-1 flex items-center justify-center rounded-lg border border-slate-200 py-2 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-850"
+              className="flex-1 flex items-center justify-center rounded-[8px] border border-border-default py-2 text-text-secondary hover:bg-surface-2 hover:text-text-primary transition-colors duration-[var(--dur-fast)]"
             >
-              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {darkMode ? <Sun className="h-4 w-4" strokeWidth={1.5} /> : <Moon className="h-4 w-4" strokeWidth={1.5} />}
             </button>
             <button
               onClick={handleSignOut}
               title="Sign Out"
-              className="flex-1 flex items-center justify-center rounded-lg border border-status-danger/20 py-2 text-status-danger hover:bg-status-danger/5 dark:border-status-danger/10"
+              className="flex-1 flex items-center justify-center rounded-[8px] border border-[--status-failed-border] py-2 text-status-failed hover:bg-status-failed-bg transition-colors duration-[var(--dur-fast)]"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Container */}
+      {/* ── Main Container ───────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        
-        {/* Top bar header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
+
+        {/* Top bar — 64px (DESIGN.md §4.7) */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border-subtle bg-surface-1 px-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
+              className="rounded-[8px] p-1.5 text-text-tertiary hover:bg-surface-3 hover:text-text-primary transition-colors duration-[var(--dur-fast)] lg:hidden"
+              aria-label="Open sidebar"
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" strokeWidth={1.5} />
             </button>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+            <h2 className="text-h3 text-text-primary">
               {pathname === "/dashboard"
                 ? "Operations Dashboard"
                 : allNavigationItems.find((item) => pathname.startsWith(item.href))?.name || "TransitOps"}
             </h2>
           </div>
 
-          {/* Top Bar Right Area */}
           <div className="flex items-center gap-4">
-            <span className="hidden text-xs text-slate-500 dark:text-slate-400 sm:inline-block">
-              System Live &bull; UTC {new Date().toISOString().split("T")[0]}
+            <span className="hidden text-caption text-text-tertiary sm:inline-block tabular-nums">
+              System Live · UTC {new Date().toISOString().split("T")[0]}
             </span>
           </div>
         </header>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-surface-0">
           {children}
         </main>
       </div>

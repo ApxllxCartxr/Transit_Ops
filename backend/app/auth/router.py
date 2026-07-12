@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -20,9 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import get_current_user
-from app.auth.models import User
-from app.auth.schemas import AuthResponse, AuthUser, LoginRequest, LogoutResponse
-from app.auth.security import create_access_token, verify_password
+from app.auth.models import User, Role
+from app.auth.schemas import AuthResponse, AuthUser, LoginRequest, LogoutResponse, RegisterRequest
+from app.auth.security import create_access_token, verify_password, hash_password
 from app.core.config import get_settings
 from app.core.db import get_db
 
@@ -127,6 +128,91 @@ async def login(
             id=user.id,
             email=user.email,
             full_name=user.full_name,
+            roles=role_names,
+        ),
+        token=token,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/register
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    summary="Register a new user account",
+)
+async def register(
+    request: Request,
+    response: Response,
+    payload: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AuthResponse:
+    """
+    Registers a new user account with bcrypt hash password.
+    Assigns the default role 'Fleet Manager'.
+    Issues a signed JWT and writes it to an HttpOnly cookie (auto-login).
+    """
+    # 1. Check if user already exists
+    existing_res = await db.execute(
+        select(User).where(User.email == payload.email)
+    )
+    if existing_res.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email address already exists.",
+        )
+
+    # 2. Get default role "Fleet Manager"
+    role_res = await db.execute(
+        select(Role).where(Role.name == "Fleet Manager")
+    )
+    role = role_res.scalars().first()
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Default authorization role not found.",
+        )
+
+    # 3. Create user
+    user_id = str(uuid.uuid4())
+    new_user = User(
+        id=user_id,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        full_name=payload.name,
+        is_active=True,
+    )
+    new_user.roles.append(role)
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+
+    role_names = [role.name]
+
+    # 4. Mint JWT
+    token = create_access_token(
+        user_id=new_user.id,
+        email=new_user.email,
+        roles=role_names,
+    )
+
+    # 5. Write cookie — HttpOnly, Lax, 24 h
+    response.set_cookie(
+        key="better-auth.session_token",
+        value=token,
+        httponly=True,
+        max_age=_settings.access_token_expire_minutes * 60,
+        samesite="lax",
+        secure=_settings.app_env == "production",
+    )
+
+    return AuthResponse(
+        user=AuthUser(
+            id=new_user.id,
+            email=new_user.email,
+            full_name=new_user.full_name,
             roles=role_names,
         ),
         token=token,

@@ -1,17 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { 
-  RefreshCw, 
-  Activity, 
-  CheckCircle, 
-  AlertTriangle, 
-  Navigation, 
-  Clock, 
-  UserCheck, 
-  TrendingUp, 
-  Loader2, 
-  Filter 
+import {
+  RefreshCw,
+  Activity,
+  CheckCircle,
+  AlertTriangle,
+  Navigation,
+  Clock,
+  UserCheck,
+  TrendingUp,
+  Filter
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
@@ -35,7 +34,7 @@ export default function DashboardPage() {
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filter states
   const [vehicleType, setVehicleType] = useState("all");
   const [vehicleStatus, setVehicleStatus] = useState("all");
@@ -66,47 +65,102 @@ export default function DashboardPage() {
     fetchKpis();
   }, [fetchKpis]);
 
+  // KPI card data config
+  const kpiCards = kpis
+    ? [
+        {
+          label: "ACTIVE VEHICLES",
+          value: kpis.activeVehicles,
+          sub: "Currently executing trips",
+          icon: Activity,
+          color: "var(--status-info-fg)",
+          bg: "var(--status-info-bg)",
+        },
+        {
+          label: "AVAILABLE",
+          value: kpis.availableVehicles,
+          sub: "Ready for assignment",
+          icon: CheckCircle,
+          color: "var(--status-success-fg)",
+          bg: "var(--status-success-bg)",
+        },
+        {
+          label: "IN SHOP",
+          value: kpis.inShopVehicles,
+          sub: "In maintenance or repair",
+          icon: AlertTriangle,
+          color: "var(--status-warning-fg)",
+          bg: "var(--status-warning-bg)",
+        },
+        {
+          label: "ACTIVE TRIPS",
+          value: kpis.activeTrips,
+          sub: "Dispatched trips on road",
+          icon: Navigation,
+          color: "var(--status-info-fg)",
+          bg: "var(--status-info-bg)",
+        },
+        {
+          label: "PENDING TRIPS",
+          value: kpis.pendingTrips,
+          sub: "Trips in Draft state",
+          icon: Clock,
+          color: "var(--status-warning-fg)",
+          bg: "var(--status-warning-bg)",
+        },
+        {
+          label: "DRIVERS ON-DUTY",
+          value: kpis.onDutyDrivers,
+          sub: "Available or executing trips",
+          icon: UserCheck,
+          color: "var(--status-success-fg)",
+          bg: "var(--status-success-bg)",
+        },
+      ]
+    : [];
+
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Top Header / Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Page header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1 className="text-h1 text-text-primary">
             Fleet Operations Overview
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-body-sm text-text-secondary mt-1">
             Real-time tracking of active trips, drivers, and vehicle status.
           </p>
         </div>
-        <div>
-          <button
-            id="refresh-kpis-btn"
-            onClick={fetchKpis}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-350 dark:hover:bg-slate-850 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh Data
-          </button>
-        </div>
+        <button
+          id="refresh-kpis-btn"
+          onClick={fetchKpis}
+          disabled={isLoading}
+          className="inline-flex items-center gap-2 rounded-[10px] border border-border-default bg-surface-2 px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-surface-3 hover:text-text-primary disabled:opacity-40 disabled:pointer-events-none active:scale-[0.97] transition-all duration-[var(--dur-fast)]"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} strokeWidth={1.5} />
+          Refresh
+        </button>
       </div>
 
-      {/* Filter Bar Component */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center gap-2 mb-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          <Filter className="h-3.5 w-3.5 text-slate-400" />
-          Filter Fleet Metrics
+      {/* Filter bar */}
+      <div
+        className="rounded-[14px] border border-border-subtle bg-surface-2 p-4"
+        style={{ boxShadow: "var(--shadow-card)" }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="h-3.5 w-3.5 text-text-tertiary" strokeWidth={1.5} />
+          <span className="text-overline text-text-tertiary">Filter Metrics</span>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label htmlFor="filter-vehicle-type" className="block text-xs font-medium text-slate-500 dark:text-slate-450 mb-1">
+            <label htmlFor="filter-vehicle-type" className="block text-caption text-text-secondary mb-1.5">
               Vehicle Type
             </label>
             <select
               id="filter-vehicle-type"
               value={vehicleType}
               onChange={(e) => setVehicleType(e.target.value)}
-              className="block w-full rounded-lg border border-slate-200 bg-slate-55 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950"
+              className="block w-full rounded-[10px] border border-border-default bg-surface-1 px-3 py-2 text-body-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-accent-soft transition-colors"
             >
               <option value="all">All Types</option>
               <option value="truck">Truck</option>
@@ -115,14 +169,14 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            <label htmlFor="filter-vehicle-status" className="block text-xs font-medium text-slate-500 dark:text-slate-450 mb-1">
+            <label htmlFor="filter-vehicle-status" className="block text-caption text-text-secondary mb-1.5">
               Vehicle Status
             </label>
             <select
               id="filter-vehicle-status"
               value={vehicleStatus}
               onChange={(e) => setVehicleStatus(e.target.value)}
-              className="block w-full rounded-lg border border-slate-200 bg-slate-55 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950"
+              className="block w-full rounded-[10px] border border-border-default bg-surface-1 px-3 py-2 text-body-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-accent-soft transition-colors"
             >
               <option value="all">All Statuses</option>
               <option value="available">Available</option>
@@ -133,14 +187,14 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            <label htmlFor="filter-region" className="block text-xs font-medium text-slate-500 dark:text-slate-450 mb-1">
+            <label htmlFor="filter-region" className="block text-caption text-text-secondary mb-1.5">
               Depot Region
             </label>
             <select
               id="filter-region"
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="block w-full rounded-lg border border-slate-200 bg-slate-55 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950"
+              className="block w-full rounded-[10px] border border-border-default bg-surface-1 px-3 py-2 text-body-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-accent-soft transition-colors"
             >
               <option value="all">All Regions</option>
               <option value="west">West</option>
@@ -152,131 +206,103 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Error Alert */}
+      {/* Error alert */}
       {error && (
-        <div className="rounded-lg bg-status-danger/10 border border-status-danger/20 p-4 text-sm text-status-danger">
-          <strong>Error Loading Metrics:</strong> {error}
+        <div
+          className="flex items-start gap-3 rounded-[10px] p-4 text-body-sm"
+          style={{
+            backgroundColor: "var(--status-failed-bg)",
+            borderColor: "var(--status-failed-border)",
+            color: "var(--status-failed-fg)",
+            border: "1px solid var(--status-failed-border)",
+          }}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" strokeWidth={1.5} />
+          <span><strong>Error:</strong> {error}</span>
         </div>
       )}
 
       {/* KPI Grid */}
       {isLoading && !kpis ? (
-        <SkeletonKPI />
+        <SkeletonKPI count={7} />
       ) : kpis ? (
-        <div className="space-y-6">
-          {/* Main Hero utilization KPI & secondary KPIs */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {/* Fleet Utilization Hero Card */}
-            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-1 flex flex-col justify-between">
+        <div className="space-y-5">
+          {/* Hero card + KPI grid */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            {/* Fleet Utilization Hero Card (DESIGN.md §7.2) */}
+            <div
+              className="relative overflow-hidden rounded-[14px] border border-border-subtle bg-surface-2 p-5 flex flex-col justify-between"
+              style={{ boxShadow: "var(--shadow-card)" }}
+            >
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    Fleet Utilization
+                  <span className="text-overline text-text-tertiary">
+                    FLEET UTILIZATION
                   </span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <TrendingUp className="h-5 w-5" />
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-[8px]"
+                    style={{ backgroundColor: "var(--accent-primary-soft)", color: "var(--accent-primary)" }}
+                  >
+                    <TrendingUp className="h-[18px] w-[18px]" strokeWidth={1.5} />
                   </span>
                 </div>
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                    {kpis.fleetUtilization}%
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-display-lg text-text-primary tabular-nums">
+                    {kpis.fleetUtilization}
                   </span>
+                  <span className="text-h2 text-text-tertiary">%</span>
                 </div>
               </div>
               <div className="mt-4">
-                <div className="w-full bg-slate-100 rounded-full h-2 dark:bg-slate-800">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-500" 
-                    style={{ width: `${kpis.fleetUtilization}%` }}
+                <div className="w-full bg-surface-3 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${kpis.fleetUtilization}%`,
+                      backgroundColor: "var(--accent-primary)",
+                    }}
                   />
                 </div>
-                <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">
-                  Formula: (Vehicles On Trip / Total Non-Retired)
+                <span className="mt-2 block text-caption text-text-tertiary">
+                  Vehicles On Trip / Total Non-Retired
                 </span>
               </div>
             </div>
 
-            {/* Grid for other 6 KPIs */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:col-span-2">
-              
-              {/* Active Vehicles (OnTrip -> Blue) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Vehicles</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-info/10 text-status-info">
-                    <Activity className="h-4.5 w-4.5" />
-                  </span>
+            {/* Secondary KPI grid */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:col-span-2">
+              {kpiCards.map((kpi) => (
+                <div
+                  key={kpi.label}
+                  className="rounded-[14px] border border-border-subtle bg-surface-2 p-5 hover:border-border-default transition-colors duration-[var(--dur-fast)]"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-overline text-text-tertiary">{kpi.label}</span>
+                    <span
+                      className="flex h-8 w-8 items-center justify-center rounded-[8px]"
+                      style={{ backgroundColor: kpi.bg, color: kpi.color }}
+                    >
+                      <kpi.icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                    </span>
+                  </div>
+                  <p className="mt-3 text-display-lg text-text-primary tabular-nums">
+                    {kpi.value}
+                  </p>
+                  <p className="mt-1 text-caption text-text-tertiary">
+                    {kpi.sub}
+                  </p>
                 </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.activeVehicles}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">Currently executing trips</p>
-              </div>
-
-              {/* Available Vehicles (Available -> Green) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Available Vehicles</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-success/10 text-status-success">
-                    <CheckCircle className="h-4.5 w-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.availableVehicles}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">Ready for assignment</p>
-              </div>
-
-              {/* In Shop Vehicles (InShop -> Amber) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">In-Shop Vehicles</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-warning/10 text-status-warning">
-                    <AlertTriangle className="h-4.5 w-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.inShopVehicles}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">In maintenance or repair</p>
-              </div>
-
-              {/* Active Trips (Dispatched -> Blue) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Trips</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-info/10 text-status-info">
-                    <Navigation className="h-4.5 w-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.activeTrips}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">Dispatched trips on road</p>
-              </div>
-
-              {/* Pending Trips (Draft -> Amber) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Trips</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-warning/10 text-status-warning">
-                    <Clock className="h-4.5 w-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.pendingTrips}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">Trips in Draft state</p>
-              </div>
-
-              {/* On-duty Drivers (Available/OnTrip -> Green) */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Drivers On-Duty</span>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-success/10 text-status-success">
-                    <UserCheck className="h-4.5 w-4.5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-3xl font-bold text-slate-900 dark:text-white">{kpis.onDutyDrivers}</p>
-                <p className="text-xs text-slate-500 mt-1 dark:text-slate-405">Available or executing trips</p>
-              </div>
-
+              ))}
             </div>
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-slate-500 dark:text-slate-400">No dashboard metrics available.</p>
+        <div
+          className="text-center py-12 rounded-[14px] border border-border-subtle bg-surface-2"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <p className="text-body text-text-secondary">No dashboard metrics available.</p>
         </div>
       )}
     </div>
