@@ -19,7 +19,22 @@ dependencies = [
 dev = ["pytest>=8.0.0", "pytest-asyncio>=0.24.0"]
 
 [tool.setuptools]
-packages = ["app", "app.auth", "app.core", "app.modules", "app.modules.drivers", "app.modules.vehicles", "app.shared"]
+packages = [
+  "app",
+  "app.auth",
+  "app.core",
+  "app.shared",
+  "app.scripts",
+  "app.modules",
+  "app.modules.vehicles",
+  "app.modules.drivers",
+  "app.modules.trips",
+  "app.modules.maintenance",
+  "app.modules.costs",
+  "app.modules.reports",
+  "app.modules.dashboard",
+  "app.modules.exports",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
