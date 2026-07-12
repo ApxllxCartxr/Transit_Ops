@@ -120,14 +120,6 @@ export default function MaintenancePage() {
   const openableVehicles = vehicles.filter((vehicle) => vehicle.status !== "OnTrip");
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-5 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-h1 text-text-primary">Maintenance Logs</h1>
-        <p className="text-body-sm text-text-secondary mt-1">
-          Track and manage fleet vehicle maintenance logs.
-        </p>
-=======
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -285,16 +277,13 @@ export default function MaintenancePage() {
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 disabled={isVehiclesLoading}
               >
-                <option value="">Select a vehicle</option>
+                <option value="">Select a vehicle...</option>
                 {openableVehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
                     {vehicle.registration_number} — {vehicle.name} ({vehicle.status})
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Vehicles currently on trip cannot be moved into maintenance.
-              </p>
             </div>
 
             {formError ? (
@@ -306,17 +295,9 @@ export default function MaintenancePage() {
             <button
               type="submit"
               disabled={isSaving || isVehiclesLoading}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-50"
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" /> Open Maintenance
-                </>
-              )}
+              {isSaving ? "Processing..." : "Open Maintenance"}
             </button>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
@@ -324,13 +305,7 @@ export default function MaintenancePage() {
             </div>
           </form>
         </aside>
->>>>>>> origin/feat/trips-kanban-page
       </div>
-      <EmptyState
-        icon={Wrench}
-        title="Coming Soon"
-        description="The Maintenance Logs module is currently under development. Real functionality will be added in a later update."
-      />
     </div>
   );
 }

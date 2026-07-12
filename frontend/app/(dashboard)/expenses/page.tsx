@@ -95,70 +95,46 @@ export default function ExpensesPage() {
   const activeExpenseEntries = costDetails?.expenses ?? [];
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-5 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-h1 text-text-primary">Fuel & Expenses</h1>
-        <p className="text-body-sm text-text-secondary mt-1">
-          Track and monitor fuel consumption and operational expenses.
-        </p>
-=======
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Fuel & Expenses
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Review fuel usage, maintenance, and incidentals with separate cost totals.
-          </p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                <Receipt className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-50">Fuel & Expenses Overview</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Date-range filters and vehicle cost summaries.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_auto]">
-            <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-[1fr_auto]">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Vehicle</label>
                 <select
                   value={selectedVehicle}
                   onChange={(event) => setSelectedVehicle(event.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                  disabled={isVehiclesLoading}
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-primary focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.registration_number} — {vehicle.name}
-                    </option>
-                  ))}
+                  {isVehiclesLoading ? (
+                    <option>Loading...</option>
+                  ) : (
+                    vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.registration_number} ({v.name})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
-
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(event) => setStartDate(event.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-primary focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">End Date</label>
                 <input
@@ -362,13 +338,7 @@ export default function ExpensesPage() {
             This dashboard uses BE2's cost endpoint and keeps operational and total costs separate per FR-FUEL-03 / FR-FUEL-03a.
           </div>
         </aside>
->>>>>>> origin/feat/trips-kanban-page
       </div>
-      <EmptyState
-        icon={Receipt}
-        title="Coming Soon"
-        description="The Fuel & Expenses module is currently under development. Real functionality will be added in a later update."
-      />
     </div>
   );
 }

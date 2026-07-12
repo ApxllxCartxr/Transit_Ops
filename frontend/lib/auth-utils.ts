@@ -32,14 +32,14 @@ export function isSessionExpired(exp?: number): boolean {
   return Date.now() >= exp * 1000;
 }
 
-export function normalizeAndMapRole(roles: string | string[]): string {
+export function normalizeAndMapRole(roles: string | string[]): UserRole {
   const roleList = Array.isArray(roles) ? roles : [roles];
   for (const r of roleList) {
     if (!r) continue;
     // Map spaces if any, e.g. "Fleet Manager" -> "FleetManager"
     const cleaned = r.replace(/\s+/g, "");
     if (["Admin", "FleetManager", "Dispatcher", "SafetyOfficer", "FinancialAnalyst"].includes(cleaned)) {
-      return cleaned;
+      return cleaned as UserRole;
     }
   }
   return "Dispatcher"; // Fallback default
@@ -67,3 +67,5 @@ export function canAccessRoute(role: string, pathname: string): boolean {
 
   return ROUTE_PERMISSIONS[matchingKey].includes(role);
 }
+
+export type UserRole = "Admin" | "FleetManager" | "Dispatcher" | "SafetyOfficer" | "FinancialAnalyst";

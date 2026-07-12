@@ -127,14 +127,6 @@ export default function ReportsPage() {
   const showEmptyReport = !isLoading && !error && !report;
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-5 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-h1 text-text-primary">Reports & Analytics</h1>
-        <p className="text-body-sm text-text-secondary mt-1">
-          Analyze fuel efficiency, fleet utilization, and vehicle ROI reports.
-        </p>
-=======
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -241,7 +233,7 @@ export default function ReportsPage() {
                   <XAxis dataKey="metric" tick={{ fill: "#64748b", fontSize: 12 }} />
                   <YAxis tick={{ fill: "#64748b", fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value: number, name: string, props) => {
+                    formatter={(value: any, name: any, props: any) => {
                       const row = chartData.find((item) => item.metric === props.payload?.[0]?.payload.metric);
                       return [row?.raw ?? value, "Value"];
                     }}
@@ -297,13 +289,7 @@ export default function ReportsPage() {
             )}
           </div>
         </section>
->>>>>>> origin/feat/trips-kanban-page
       </div>
-      <EmptyState
-        icon={BarChart3}
-        title="Coming Soon"
-        description="The Reports & Analytics module is currently under development. Real functionality will be added in a later update."
-      />
     </div>
   );
 }

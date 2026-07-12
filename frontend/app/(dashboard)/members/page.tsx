@@ -30,7 +30,7 @@ interface Member {
   id: string;
   email: string;
   full_name: string;
-  is_active: bool | boolean;
+  is_active: boolean;
   roles: string[];
   last_login_at?: string | null;
   created_at?: string | null;
@@ -57,7 +57,10 @@ export default function MembersPage() {
   const currentUserRole = normalizeAndMapRole(rawUserRole);
   const canManageMembers = isActionAllowed(currentUserRole, "create", "members");
 
-  const { showToast } = useToast();
+  const { addToast } = useToast();
+  const showToast = useCallback(({ title, description, type }: { title?: string; description: string; type: any }) => {
+    addToast(description || title || "", type);
+  }, [addToast]);
 
   const [members, setMembers] = useState<Member[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -340,11 +343,17 @@ export default function MembersPage() {
               icon={UserX}
               title="No members found"
               description="No team members match your current search query or role filter."
-              actionLabel={roleFilter !== "all" || search ? "Reset Filters" : undefined}
-              onAction={() => {
-                setSearch("");
-                setRoleFilter("all");
-              }}
+              action={
+                roleFilter !== "all" || search
+                  ? {
+                      label: "Reset Filters",
+                      onClick: () => {
+                        setSearch("");
+                        setRoleFilter("all");
+                      },
+                    }
+                  : undefined
+              }
             />
           </div>
         ) : (
