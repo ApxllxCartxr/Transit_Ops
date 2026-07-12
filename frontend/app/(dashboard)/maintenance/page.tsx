@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { Vehicle } from "@/types/api";
 import type { MaintenanceLog, PaginatedMaintenance } from "@/types/api";
 
@@ -169,8 +170,8 @@ export default function MaintenancePage() {
           </div>
 
           {isLoading ? (
-            <div className="flex min-h-[320px] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading maintenance logs...
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+              <SkeletonTable rows={5} columns={6} />
             </div>
           ) : maintenanceLogs.length === 0 ? (
             <EmptyState

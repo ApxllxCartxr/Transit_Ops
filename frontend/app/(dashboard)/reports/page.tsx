@@ -11,9 +11,11 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { Download, Filter, Loader2 } from "lucide-react";
+import { Download, Filter, Loader2, BarChart3 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SkeletonTable } from "@/components/ui/skeleton";
 import { ReportsSummary } from "@/types/api";
 
 const REPORT_METRICS = [
@@ -122,6 +124,8 @@ export default function ReportsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const showEmptyReport = !isLoading && !error && !report;
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -205,6 +209,23 @@ export default function ReportsPage() {
               <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
                 {error}
               </div>
+            ) : isLoading ? (
+              <div className="flex h-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-950">
+                <div className="space-y-3 w-full max-w-xl">
+                  <div className="h-5 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="h-24 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-24 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-24 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                  </div>
+                </div>
+              </div>
+            ) : showEmptyReport ? (
+              <EmptyState
+                icon={BarChart3}
+                title="No report data available"
+                description="Run the report again or adjust the acquisition cost to generate metrics."
+              />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 16 }}>
@@ -234,32 +255,38 @@ export default function ReportsPage() {
           </div>
 
           <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <table className="min-w-full text-left text-sm text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-                <tr>
-                  <th className="px-4 py-3">Metric</th>
-                  <th className="px-4 py-3">Value</th>
-                  <th className="px-4 py-3">Description</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                {report ? (
-                  tableRows.map((row) => (
+            {isLoading ? (
+              <div className="bg-slate-50 p-6 dark:bg-slate-950">
+                <SkeletonTable rows={4} columns={3} />
+              </div>
+            ) : showEmptyReport ? (
+              <div className="p-6">
+                <EmptyState
+                  icon={BarChart3}
+                  title="No report data available"
+                  description="Run the report again or adjust the acquisition cost to generate metrics."
+                />
+              </div>
+            ) : (
+              <table className="min-w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th className="px-4 py-3">Metric</th>
+                    <th className="px-4 py-3">Value</th>
+                    <th className="px-4 py-3">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                  {tableRows.map((row) => (
                     <tr key={row.label}>
                       <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-50">{row.label}</td>
                       <td className="px-4 py-3">{row.value}</td>
                       <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{row.description}</td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
-                      {isLoading ? "Loading report data..." : "No report data available."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
       </div>
