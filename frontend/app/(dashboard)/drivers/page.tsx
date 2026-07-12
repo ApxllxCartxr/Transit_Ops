@@ -383,9 +383,38 @@ export default function DriversPage() {
                       </td>
                       <td className="px-4 py-3 text-body-sm text-text-secondary">{d.contact_number}</td>
                       <td className="px-4 py-3">
-                        <span className="text-body-sm font-bold tabular-nums" style={{ color: getScoreColor(d.safety_score) }}>
-                          {d.safety_score}/100
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative flex h-9 w-9 items-center justify-center shrink-0">
+                            <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 36 36">
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="transparent"
+                                stroke="var(--surface-3)"
+                                strokeWidth="3.5"
+                              />
+                              <circle
+                                cx="18"
+                                cy="18"
+                                r="14"
+                                fill="transparent"
+                                stroke={getScoreColor(d.safety_score)}
+                                strokeWidth="3.5"
+                                strokeDasharray={88}
+                                strokeDashoffset={88 - (88 * d.safety_score) / 100}
+                                strokeLinecap="round"
+                                className="transition-all duration-700 ease-out"
+                              />
+                            </svg>
+                            <span className="absolute text-[11px] font-bold tabular-nums text-text-primary">
+                              {d.safety_score}
+                            </span>
+                          </div>
+                          <span className="text-caption font-semibold" style={{ color: getScoreColor(d.safety_score) }}>
+                            {d.safety_score >= 90 ? "Excellent" : d.safety_score >= 75 ? "Good" : d.safety_score >= 50 ? "Caution" : "Critical"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span

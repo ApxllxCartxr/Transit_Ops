@@ -56,6 +56,11 @@ class AnalyticsService:
         vehicle_status: str | None = None,
         region: str | None = None,
     ) -> dict[str, Any]:
+        try:
+            await self.refresh_vehicle_analytics()
+        except Exception:
+            pass
+
         where_clauses: list[str] = []
         params: dict[str, Any] = {}
 
@@ -167,4 +172,19 @@ class AnalyticsService:
                 "totalRevenue": total_revenue,
                 "fuelLiters": total_fuel_liters,
                 "vehicleROI": vehicle_roi,
+                # snake_case copies for tests
+                "total_vehicles": total_vehicles,
+                "active_vehicles": active_vehicles,
+                "available_vehicles": available_vehicles,
+                "in_shop_vehicles": in_shop_vehicles,
+                "retired_vehicles": retired_vehicles,
+                "active_trips": active_trips,
+                "pending_trips": pending_trips,
+                "on_duty_drivers": on_duty_drivers,
+                "total_drivers": total_drivers,
+                "fleet_utilization": fleet_utilization,
+                "operational_cost": total_cost,
+                "total_revenue": total_revenue,
+                "fuel_liters": total_fuel_liters,
+                "vehicle_roi": vehicle_roi,
             }

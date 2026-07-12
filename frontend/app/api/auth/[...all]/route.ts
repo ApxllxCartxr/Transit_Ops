@@ -63,6 +63,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         email: userData.email,
         name: userData.full_name,
         role: normalizeAndMapRole(userData.roles),
+        roles: userData.roles,
         image: null,
       },
     });
@@ -129,6 +130,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           email: loginData.user.email,
           name: loginData.user.full_name,
           role: normalizeAndMapRole(loginData.user.roles),
+          roles: loginData.user.roles,
           image: null,
         },
       });

@@ -31,6 +31,7 @@ from app.core.exceptions import TransitOpsError
 from app.auth.router import router as auth_router
 from app.modules.vehicles.router import router as vehicles_router
 from app.modules.drivers.router import router as drivers_router
+from app.modules.users.router import router as users_router
 
 # BE2 operations modules (merged from feat/backend-ops-analytics)
 from app.modules.trips.router import router as trips_router
@@ -124,6 +125,7 @@ async def transitops_error_handler(request: Request, exc: TransitOpsError) -> JS
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(vehicles_router, prefix="/api/v1")
 app.include_router(drivers_router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
 
 # BE2 — Operations & Analytics routers
 app.include_router(trips_router)

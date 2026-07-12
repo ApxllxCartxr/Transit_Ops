@@ -21,6 +21,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { normalizeAndMapRole } from "@/lib/auth-utils";
 
 interface LayoutShellProps {
   children: React.ReactNode;
@@ -70,7 +71,8 @@ export default function LayoutShell({ children }: LayoutShellProps) {
   }
 
   const user = sessionState?.user;
-  const role = (user as any)?.role || "FleetManager";
+  const rawRole = (user as any)?.roles || (user as any)?.role || "FleetManager";
+  const role = normalizeAndMapRole(rawRole);
 
   // Navigation Links with RBAC checks
   const allNavigationItems = [
@@ -115,6 +117,12 @@ export default function LayoutShell({ children }: LayoutShellProps) {
       href: "/reports",
       icon: BarChart3,
       roles: ["Admin", "FinancialAnalyst", "FleetManager"],
+    },
+    {
+      name: "Members",
+      href: "/members",
+      icon: User,
+      roles: ["Admin"],
     },
   ];
 

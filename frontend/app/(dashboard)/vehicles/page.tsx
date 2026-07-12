@@ -415,20 +415,39 @@ export default function VehiclesPage() {
                       </td>
                       <td className="px-4 py-3 text-body-sm text-text-secondary capitalize">{v.vehicle_type}</td>
                       <td className="px-4 py-3 text-body-sm text-text-secondary tabular-nums">{v.max_load_kg.toLocaleString()} kg</td>
-                      <td className="px-4 py-3 text-mono-data text-text-secondary">{v.odometer_km.toLocaleString()} km</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-mono-data font-medium text-text-primary tabular-nums">
+                            {v.odometer_km.toLocaleString()} km
+                          </span>
+                          {v.odometer_km > 250000 ? (
+                            <span className="inline-flex items-center gap-1 self-start rounded-[4px] bg-status-failed-bg border border-status-failed/30 px-1.5 py-0.5 text-[10px] font-semibold text-status-failed">
+                              ⚠️ High Wear
+                            </span>
+                          ) : v.odometer_km > 150000 ? (
+                            <span className="inline-flex items-center gap-1 self-start rounded-[4px] bg-status-warning-bg border border-status-warning/30 px-1.5 py-0.5 text-[10px] font-semibold text-status-warning">
+                              🔧 Inspection Due
+                            </span>
+                          ) : v.odometer_km < 25000 ? (
+                            <span className="inline-flex items-center gap-1 self-start rounded-[4px] bg-status-success-bg border border-status-success/30 px-1.5 py-0.5 text-[10px] font-semibold text-status-success">
+                              ✨ Prime Condition
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-body-sm text-text-secondary">{v.region}</td>
                       <td className="px-4 py-3">
-                        {/* Status Pill (DESIGN.md §7.3) */}
+                        {/* Status Pill with Lock & Active Telemetry badges */}
                         <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium border shadow-2xs transition-all"
                           style={{
                             color: `var(--status-${sc.token}-fg)`,
                             backgroundColor: `var(--status-${sc.token}-bg)`,
                             borderColor: `var(--status-${sc.token}-border)`,
                           }}
                         >
-                          <sc.icon className="h-3.5 w-3.5" strokeWidth={2} />
-                          {sc.label}
+                          <sc.icon className={`h-3.5 w-3.5 ${v.status === "OnTrip" ? "animate-spin" : ""}`} strokeWidth={2} />
+                          {v.status === "InShop" ? "🔒 In Shop (Maintenance)" : v.status === "OnTrip" ? "⚡ On Trip (Dispatched)" : sc.label}
                         </span>
                       </td>
                       {isActionAllowed(userRole, "edit", "vehicles") && (
