@@ -12,4 +12,12 @@ def test_maintenance_log_model_is_registered_with_sqlalchemy():
     maintenance_model = import_module("app.modules.maintenance.models").MaintenanceLog
     assert maintenance_model.__tablename__ == "maintenance_logs"
     assert "vehicle_id" in maintenance_model.__table__.columns
+    assert "opened_at" in maintenance_model.__table__.columns
+    assert "closed_at" in maintenance_model.__table__.columns
     assert "status" in maintenance_model.__table__.columns
+    assert any(
+        constraint.name == "ck_maintenance_logs_close_after_open"
+        for constraint in maintenance_model.__table__.constraints
+    )
+    assert any(index.name == "idx_maint_vehicle" for index in maintenance_model.__table__.indexes)
+    assert any(index.name == "uq_open_maint_per_vehicle" for index in maintenance_model.__table__.indexes)

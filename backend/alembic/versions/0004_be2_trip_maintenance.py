@@ -55,6 +55,13 @@ def upgrade() -> None:
         "maintenance_logs",
         sa.Column("id", sa.String(36), primary_key=True, nullable=False),
         sa.Column("vehicle_id", sa.String(36), nullable=False),
+        sa.Column(
+            "opened_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column("closed_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column(
             "vehicle_status",
@@ -83,14 +90,24 @@ def upgrade() -> None:
             "vehicle_status IN ('Available', 'OnTrip', 'InShop', 'Retired')",
             name="ck_maintenance_logs_vehicle_status",
         ),
+        sa.CheckConstraint(
+            "closed_at IS NULL OR closed_at >= opened_at",
+            name="ck_maintenance_logs_close_after_open",
+        ),
     )
-    op.create_index("idx_maintenance_logs_vehicle", "maintenance_logs", ["vehicle_id"])
-    op.create_index("idx_maintenance_logs_status", "maintenance_logs", ["status"])
+    op.create_index("idx_maint_vehicle", "maintenance_logs", ["vehicle_id"])
+    op.create_index(
+        "uq_open_maint_per_vehicle",
+        "maintenance_logs",
+        ["vehicle_id"],
+        unique=True,
+        postgresql_where=sa.text("closed_at IS NULL"),
+    )
 
 
 def downgrade() -> None:
-    op.drop_index("idx_maintenance_logs_status", table_name="maintenance_logs")
-    op.drop_index("idx_maintenance_logs_vehicle", table_name="maintenance_logs")
+    op.drop_index("uq_open_maint_per_vehicle", table_name="maintenance_logs")
+    op.drop_index("idx_maint_vehicle", table_name="maintenance_logs")
     op.drop_table("maintenance_logs")
     op.drop_index("idx_trips_vehicle_driver", table_name="trips")
     op.drop_index("idx_trips_status", table_name="trips")
