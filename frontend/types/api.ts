@@ -59,6 +59,31 @@ export interface PaginatedTrips {
   size: number;
 }
 
+export interface CostDetails {
+  vehicle_id: string;
+  fuel_cost: number;
+  maintenance_cost: number;
+  expense_cost: number;
+  operational_cost: number;
+  total_cost: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  fuel_entries: Array<{
+    id: string;
+    liters: number;
+    cost_per_liter: number;
+    total_cost: number;
+    logged_at: string;
+  }>;
+  expenses: Array<{
+    id: string;
+    category: string;
+    description?: string;
+    amount: number;
+    incurred_at: string;
+  }>;
+}
+
 export interface MaintenanceLog {
   id: string;
   vehicle_id: string;
