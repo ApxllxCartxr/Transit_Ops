@@ -19,6 +19,9 @@ import {
   FileText,
   Truck,
   Users,
+  MapPin,
+  Package,
+  ClipboardList,
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
@@ -266,6 +269,48 @@ interface CreateDrawerProps {
   drivers: Driver[];
 }
 
+type TripStep = "Route" | "Cargo" | "Vehicle" | "Driver" | "Review";
+
+const TRIP_STEPS: { title: TripStep; description: string; icon: React.ElementType }[] = [
+  {
+    title: "Route",
+    description: "Set pickup and delivery locations and dates.",
+    icon: MapPin,
+  },
+  {
+    title: "Cargo",
+    description: "Describe the load for this trip.",
+    icon: FileText,
+  },
+  {
+    title: "Vehicle",
+    description: "Choose an available vehicle.",
+    icon: Truck,
+  },
+  {
+    title: "Driver",
+    description: "Assign an available driver.",
+    icon: Users,
+  },
+  {
+    title: "Review",
+    description: "Confirm details before creating.",
+    icon: CheckCircle2,
+  },
+];
+
+interface TripFormData {
+  origin: string;
+  destination: string;
+  departure_date: string;
+  arrival_date: string;
+  cargo_type: string;
+  cargo_weight_kg: string;
+  cargo_description: string;
+  vehicle_id: string;
+  driver_id: string;
+}
+
 function CreateTripDrawer({
   open,
   onClose,
@@ -274,8 +319,18 @@ function CreateTripDrawer({
   drivers,
 }: CreateDrawerProps) {
   const { addToast } = useToast();
-  const [vehicleId, setVehicleId] = useState("");
-  const [driverId, setDriverId] = useState("");
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState<TripFormData>({
+    origin: "",
+    destination: "",
+    departure_date: "",
+    arrival_date: "",
+    cargo_type: "General Freight",
+    cargo_weight_kg: "",
+    cargo_description: "",
+    vehicle_id: "",
+    driver_id: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -283,8 +338,18 @@ function CreateTripDrawer({
   const availableDrivers = drivers.filter((d) => d.status === "Available");
 
   const reset = useCallback(() => {
-    setVehicleId("");
-    setDriverId("");
+    setStep(0);
+    setFormData({
+      origin: "",
+      destination: "",
+      departure_date: "",
+      arrival_date: "",
+      cargo_type: "General Freight",
+      cargo_weight_kg: "",
+      cargo_description: "",
+      vehicle_id: "",
+      driver_id: "",
+    });
     setError(null);
     setSaving(false);
   }, []);
@@ -293,27 +358,319 @@ function CreateTripDrawer({
     if (open) reset();
   }, [open, reset]);
 
+  const updateField = (field: keyof TripFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const hasValidRoute =
+    formData.origin.trim() !== "" &&
+    formData.destination.trim() !== "" &&
+    formData.departure_date !== "" &&
+    formData.arrival_date !== "";
+
+  const hasValidCargo =
+    formData.cargo_type.trim() !== "" &&
+    Number(formData.cargo_weight_kg) > 0;
+
+  const hasValidVehicle = formData.vehicle_id !== "";
+  const hasValidDriver = formData.driver_id !== "";
+
+  const stepValidationError = () => {
+    if (step === 0) {
+      if (!hasValidRoute) return "Please complete the route details.";
+      if (new Date(formData.arrival_date) < new Date(formData.departure_date)) {
+        return "Arrival date must be after departure date.";
+      }
+      return null;
+    }
+    if (step === 1) {
+      if (!hasValidCargo) return "Please provide cargo type and weight.";
+      return null;
+    }
+    if (step === 2) {
+      if (!hasValidVehicle) return "Choose an available vehicle to continue.";
+      return null;
+    }
+    if (step === 3) {
+      if (!hasValidDriver) return "Choose an available driver to continue.";
+      return null;
+    }
+    return null;
+  };
+
+  const handleContinue = () => {
+    const validationError = stepValidationError();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    setStep((prev) => Math.min(prev + 1, TRIP_STEPS.length - 1));
+  };
+
+  const handleBack = () => {
+    setError(null);
+    setStep((prev) => Math.max(prev - 1, 0));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    if (step < TRIP_STEPS.length - 1) {
+      handleContinue();
+      return;
+    }
 
-    if (!vehicleId || !driverId) {
-      setError("Please select both a vehicle and a driver.");
+    if (!hasValidVehicle || !hasValidDriver) {
+      setError("Please select both a vehicle and a driver before creating the trip.");
       return;
     }
 
     setSaving(true);
+    setError(null);
     try {
-      await apiClient.post("trips/", { vehicle_id: vehicleId, driver_id: driverId });
+      await apiClient.post("trips/", {
+        vehicle_id: formData.vehicle_id,
+        driver_id: formData.driver_id,
+      });
       addToast("Trip created successfully!", "success");
       onCreated();
       onClose();
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create trip.";
+      const message = err instanceof Error ? err.message : "Failed to create trip.";
       setError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 0:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Pickup Location
+              </label>
+              <input
+                type="text"
+                value={formData.origin}
+                onChange={(e) => updateField("origin", e.target.value)}
+                placeholder="Main warehouse, Terminal A"
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Delivery Location
+              </label>
+              <input
+                type="text"
+                value={formData.destination}
+                onChange={(e) => updateField("destination", e.target.value)}
+                placeholder="Customer depot, Site B"
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Departure Date
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.departure_date}
+                  onChange={(e) => updateField("departure_date", e.target.value)}
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Expected Arrival
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.arrival_date}
+                  onChange={(e) => updateField("arrival_date", e.target.value)}
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Cargo Type
+              </label>
+              <input
+                type="text"
+                value={formData.cargo_type}
+                onChange={(e) => updateField("cargo_type", e.target.value)}
+                placeholder="General freight, Refrigerated, Hazardous"
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.cargo_weight_kg}
+                  onChange={(e) => updateField("cargo_weight_kg", e.target.value)}
+                  placeholder="1200"
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Cargo Notes
+                </label>
+                <input
+                  type="text"
+                  value={formData.cargo_description}
+                  onChange={(e) => updateField("cargo_description", e.target.value)}
+                  placeholder="Palletized goods, fragile items"
+                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Vehicle
+              </label>
+              <select
+                id="create-trip-vehicle"
+                value={formData.vehicle_id}
+                onChange={(e) => updateField("vehicle_id", e.target.value)}
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              >
+                <option value="">Select an available vehicle…</option>
+                {availableVehicles.length === 0 && (
+                  <option disabled>No available vehicles</option>
+                )}
+                {availableVehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicle.registration_number} · {vehicle.name}
+                  </option>
+                ))}
+              </select>
+              {availableVehicles.length === 0 && (
+                <p className="mt-1 text-[11px] text-status-warning">
+                  All vehicles are currently unavailable.
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">Vehicle guidance</p>
+              <p className="mt-1 text-xs">Choose a vehicle large enough for the cargo and currently available for dispatch.</p>
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Driver
+              </label>
+              <select
+                id="create-trip-driver"
+                value={formData.driver_id}
+                onChange={(e) => updateField("driver_id", e.target.value)}
+                className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              >
+                <option value="">Select an available driver…</option>
+                {availableDrivers.length === 0 && (
+                  <option disabled>No available drivers</option>
+                )}
+                {availableDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.full_name}
+                  </option>
+                ))}
+              </select>
+              {availableDrivers.length === 0 && (
+                <p className="mt-1 text-[11px] text-status-warning">
+                  All drivers are currently unavailable.
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">Driver guidance</p>
+              <p className="mt-1 text-xs">Assign a driver who is currently available and ready for the trip.</p>
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Route summary
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-slate-100">
+                <strong>From:</strong> {formData.origin || "—"}
+              </p>
+              <p className="text-sm text-slate-900 dark:text-slate-100">
+                <strong>To:</strong> {formData.destination || "—"}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {formData.departure_date && formData.arrival_date
+                  ? `${new Date(formData.departure_date).toLocaleString()} → ${new Date(formData.arrival_date).toLocaleString()}`
+                  : "Schedule not set."}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Cargo summary
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-slate-100">
+                {formData.cargo_type || "Cargo type not set."}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {formData.cargo_weight_kg ? `${formData.cargo_weight_kg} kg` : "Weight not set."}
+              </p>
+              {formData.cargo_description && (
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  {formData.cargo_description}
+                </p>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Assignment summary
+              </p>
+              <p className="mt-2 text-sm text-slate-900 dark:text-slate-100">
+                <strong>Vehicle:</strong>{" "}
+                {availableVehicles.find((v) => v.id === formData.vehicle_id)
+                  ? `${availableVehicles.find((v) => v.id === formData.vehicle_id)?.registration_number} · ${availableVehicles.find((v) => v.id === formData.vehicle_id)?.name}`
+                  : "Not selected."}
+              </p>
+              <p className="text-sm text-slate-900 dark:text-slate-100">
+                <strong>Driver:</strong>{" "}
+                {availableDrivers.find((d) => d.id === formData.driver_id)
+                  ? availableDrivers.find((d) => d.id === formData.driver_id)?.full_name
+                  : "Not selected."}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Route and cargo details are collected locally and will be included in the trip record when backend metadata support is available.
+            </p>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -328,13 +685,17 @@ function CreateTripDrawer({
       <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div className="pointer-events-auto w-screen max-w-md bg-white shadow-2xl dark:bg-slate-900">
           <div className="flex h-full flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-800 py-6">
-            {/* Header */}
             <div className="px-6 flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <Navigation className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Create New Trip
-                </h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    Create New Trip
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Step {step + 1} of {TRIP_STEPS.length}: {TRIP_STEPS[step].title}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={onClose}
@@ -345,8 +706,39 @@ function CreateTripDrawer({
               </button>
             </div>
 
-            {/* Body */}
-            <form onSubmit={handleSubmit} className="flex-1 px-6 mt-6 space-y-5">
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-3 gap-2">
+                {TRIP_STEPS.map((stepItem, index) => {
+                  const Icon = stepItem.icon;
+                  const isActive = index === step;
+                  const isComplete = index < step;
+                  return (
+                    <button
+                      key={stepItem.title}
+                      type="button"
+                      onClick={() => {
+                        if (index <= step) {
+                          setStep(index);
+                          setError(null);
+                        }
+                      }}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                        isActive
+                          ? "border-primary bg-primary/5 text-primary"
+                          : isComplete
+                          ? "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                          : "border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{stepItem.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex-1 px-6 py-6 space-y-5">
               {error && (
                 <div className="flex items-start gap-2.5 rounded-lg bg-status-danger/10 p-3.5 text-xs text-status-danger border border-status-danger/25">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -354,70 +746,8 @@ function CreateTripDrawer({
                 </div>
               )}
 
-              {/* Vehicle selector */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Vehicle
-                </label>
-                <select
-                  id="create-trip-vehicle"
-                  value={vehicleId}
-                  onChange={(e) => setVehicleId(e.target.value)}
-                  required
-                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                >
-                  <option value="">Select a vehicle…</option>
-                  {availableVehicles.length === 0 && (
-                    <option disabled>No available vehicles</option>
-                  )}
-                  {availableVehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.registration_number} · {v.name}
-                    </option>
-                  ))}
-                </select>
-                {availableVehicles.length === 0 && (
-                  <p className="mt-1 text-[11px] text-status-warning">
-                    All vehicles are currently unavailable.
-                  </p>
-                )}
-              </div>
+              {renderStepContent()}
 
-              {/* Driver selector */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Driver
-                </label>
-                <select
-                  id="create-trip-driver"
-                  value={driverId}
-                  onChange={(e) => setDriverId(e.target.value)}
-                  required
-                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                >
-                  <option value="">Select a driver…</option>
-                  {availableDrivers.length === 0 && (
-                    <option disabled>No available drivers</option>
-                  )}
-                  {availableDrivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.full_name}
-                    </option>
-                  ))}
-                </select>
-                {availableDrivers.length === 0 && (
-                  <p className="mt-1 text-[11px] text-status-warning">
-                    All drivers are currently unavailable.
-                  </p>
-                )}
-              </div>
-
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                New trips start in <strong>Draft</strong> status. Use the board
-                to dispatch, complete, or cancel them.
-              </p>
-
-              {/* Footer */}
               <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
                 <button
                   type="button"
@@ -427,12 +757,20 @@ function CreateTripDrawer({
                   Cancel
                 </button>
                 <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={step === 0}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Back
+                </button>
+                <button
                   type="submit"
                   disabled={saving}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/95 transition-colors disabled:opacity-60"
                 >
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {saving ? "Creating…" : "Create Trip"}
+                  {step === TRIP_STEPS.length - 1 ? "Create Trip" : "Continue"}
                 </button>
               </div>
             </form>

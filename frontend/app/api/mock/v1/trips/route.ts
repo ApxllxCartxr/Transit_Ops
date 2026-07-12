@@ -30,11 +30,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const searchParams = request.nextUrl.searchParams;
+    let vehicle_id = searchParams.get("vehicle_id") || "";
+    let driver_id = searchParams.get("driver_id") || "";
 
-    if (!body.vehicle_id || !body.driver_id) {
+    if (!vehicle_id || !driver_id) {
+      try {
+        const body = await request.json();
+        vehicle_id = vehicle_id || body.vehicle_id || "";
+        driver_id = driver_id || body.driver_id || "";
+      } catch (e) {
+        // ignore JSON parsing issues if fields are missing
+      }
+    }
+
+    if (!vehicle_id || !driver_id) {
       return NextResponse.json(
-        { error: "vehicle_id and driver_id are required." },
+        { error: "vehicle_id and driver_id are required parameters." },
         { status: 400 }
       );
     }
@@ -42,8 +54,8 @@ export async function POST(request: NextRequest) {
     const vehicles = mockDb.getVehicles();
     const drivers = mockDb.getDrivers();
 
-    const vehicle = vehicles.find((v) => v.id === body.vehicle_id);
-    const driver = drivers.find((d) => d.id === body.driver_id);
+    const vehicle = vehicles.find((v) => v.id === vehicle_id);
+    const driver = drivers.find((d) => d.id === driver_id);
 
     if (!vehicle) {
       return NextResponse.json({ error: "Vehicle not found." }, { status: 404 });
