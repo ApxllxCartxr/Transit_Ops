@@ -8,7 +8,6 @@ from app.modules.maintenance.service import MaintenanceService
 router = APIRouter(prefix="/api/v1/maintenance", tags=["maintenance"])
 service = MaintenanceService()
 
-
 @router.post("/open", dependencies=[Depends(require_roles("Admin", "Fleet Manager"))])
 async def open_maintenance(vehicle_id: str):
     return dataclasses.asdict(service.open_maintenance(vehicle_id))
