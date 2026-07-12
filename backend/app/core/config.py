@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5434/transitops"
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
+    # Comma-separated allowed CORS origins.
+    # Override via ALLOWED_ORIGINS env var in production, e.g.:
+    #   ALLOWED_ORIGINS=https://app.transitops.dev
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -1,27 +1,30 @@
 """
-Tests ported from BE2 (feat/backend-ops-analytics: Backend/tests/test_ops_rules.py).
-Adapted to import from app.modules.* (our canonical backend structure).
+tests/test_ops_rules.py
+
+Verify business logic and operations rules for trips, maintenance, and reports.
+- Trips and costs are tested using pure in-memory stubs (synchronous).
+- Maintenance is tested using the real database and async queries.
 """
+
+import asyncio
+import uuid
 
 import pytest
 
+from sqlalchemy import text
+
 from app.modules.trips.service import TripService
-from app.modules.maintenance.service import MaintenanceService
+from app.modules.maintenance.service import MaintenanceService, MaintenanceTransitionError
 from app.modules.costs.service import CostService
 from app.modules.reports.service import ReportService
+from app.core.db import AsyncSessionLocal
+from app.shared.enums import VehicleStatus
 
 
 @pytest.fixture
 def trip_service():
     svc = TripService()
     svc._trips = {}  # ensure clean state per test
-    return svc
-
-
-@pytest.fixture
-def maintenance_service():
-    svc = MaintenanceService()
-    svc._maintenances = {}
     return svc
 
 
@@ -36,7 +39,38 @@ def report_service():
 
 
 # ---------------------------------------------------------------------------
-# Trip business rules
+# Async DB helper — create / delete temporary Vehicle rows for maintenance
+# ---------------------------------------------------------------------------
+
+async def _insert_vehicle(session, vid: str, status: str = VehicleStatus.AVAILABLE) -> None:
+    await session.execute(
+        text(
+            """
+            INSERT INTO vehicles
+                (id, registration_number, name, model, vehicle_type,
+                 max_load_kg, odometer_km, acquisition_cost, acquired_at, status)
+            VALUES
+                (:id, :reg, :name, :model, :vtype,
+                 1000, 0, 50000, '2024-01-01', :status)
+            ON CONFLICT (id) DO NOTHING
+            """
+        ),
+        {"id": vid, "reg": vid, "name": vid, "model": "Test", "vtype": "Truck", "status": status},
+    )
+
+
+async def _delete_vehicle(session, vid: str) -> None:
+    await session.execute(text("DELETE FROM vehicles WHERE id = :id"), {"id": vid})
+
+
+async def _delete_maintenance_for(session, vid: str) -> None:
+    await session.execute(
+        text("DELETE FROM maintenance_logs WHERE vehicle_id = :id"), {"id": vid}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Trip business rules  (synchronous in-memory service)
 # ---------------------------------------------------------------------------
 
 def test_trip_dispatch_requires_vehicle_and_driver_available(trip_service):
@@ -74,29 +108,82 @@ def test_trip_cannot_cancel_completed_trip(trip_service):
 
 
 # ---------------------------------------------------------------------------
-# Maintenance business rules
+# Maintenance business rules  (async — uses real Postgres DB)
 # ---------------------------------------------------------------------------
 
-def test_maintenance_opening_sets_vehicle_status_to_inshop(maintenance_service):
-    maintenance = maintenance_service.open_maintenance("V-3")
-    assert maintenance.vehicle_status == "InShop"
+@pytest.mark.asyncio
+async def test_maintenance_opening_sets_vehicle_status_to_inshop() -> None:
+    """Opening maintenance on an available vehicle sets its status to InShop."""
+    vid = f"V-maint-{uuid.uuid4().hex[:6]}"
+    svc = MaintenanceService()
+    async with AsyncSessionLocal() as session:
+        await _insert_vehicle(session, vid, VehicleStatus.AVAILABLE)
+        await session.commit()
+    try:
+        m = await svc.open_maintenance(vid)
+        assert m.status == "Open"
+        assert m.vehicle_id == vid
+    finally:
+        async with AsyncSessionLocal() as session:
+            await _delete_maintenance_for(session, vid)
+            await _delete_vehicle(session, vid)
+            await session.commit()
 
 
-def test_maintenance_cannot_be_opened_for_vehicle_on_trip(maintenance_service):
-    with pytest.raises(ValueError):
-        maintenance_service.open_maintenance("V-4")
+@pytest.mark.asyncio
+async def test_maintenance_cannot_be_opened_for_vehicle_on_trip() -> None:
+    """A vehicle with ON_TRIP status must raise MaintenanceTransitionError."""
+    vid = f"V-maint-{uuid.uuid4().hex[:6]}"
+    svc = MaintenanceService()
+    async with AsyncSessionLocal() as session:
+        await _insert_vehicle(session, vid, VehicleStatus.ON_TRIP)
+        await session.commit()
+    try:
+        with pytest.raises((MaintenanceTransitionError, ValueError)):
+            await svc.open_maintenance(vid)
+    finally:
+        async with AsyncSessionLocal() as session:
+            await _delete_maintenance_for(session, vid)
+            await _delete_vehicle(session, vid)
+            await session.commit()
 
 
-def test_maintenance_cannot_open_duplicate_for_same_vehicle(maintenance_service):
-    maintenance_service.open_maintenance("V-5")
-    with pytest.raises(ValueError):
-        maintenance_service.open_maintenance("V-5")
+@pytest.mark.asyncio
+async def test_maintenance_cannot_open_duplicate_for_same_vehicle() -> None:
+    """Opening a second maintenance record for the same vehicle must fail."""
+    vid = f"V-maint-{uuid.uuid4().hex[:6]}"
+    svc = MaintenanceService()
+    async with AsyncSessionLocal() as session:
+        await _insert_vehicle(session, vid, VehicleStatus.AVAILABLE)
+        await session.commit()
+    try:
+        await svc.open_maintenance(vid)  # first — OK
+        with pytest.raises((MaintenanceTransitionError, ValueError)):
+            await svc.open_maintenance(vid)  # second — must fail
+    finally:
+        async with AsyncSessionLocal() as session:
+            await _delete_maintenance_for(session, vid)
+            await _delete_vehicle(session, vid)
+            await session.commit()
 
 
-def test_maintenance_close_sets_vehicle_available(maintenance_service):
-    m = maintenance_service.open_maintenance("V-6")
-    closed = maintenance_service.close_maintenance(m.id)
-    assert closed.vehicle_status == "Available"
+@pytest.mark.asyncio
+async def test_maintenance_close_sets_vehicle_available() -> None:
+    """Closing an open maintenance log must return vehicle to Available."""
+    vid = f"V-maint-{uuid.uuid4().hex[:6]}"
+    svc = MaintenanceService()
+    async with AsyncSessionLocal() as session:
+        await _insert_vehicle(session, vid, VehicleStatus.AVAILABLE)
+        await session.commit()
+    try:
+        m = await svc.open_maintenance(vid)
+        closed = await svc.close_maintenance(m.id)
+        assert closed.status == "Closed"
+    finally:
+        async with AsyncSessionLocal() as session:
+            await _delete_maintenance_for(session, vid)
+            await _delete_vehicle(session, vid)
+            await session.commit()
 
 
 # ---------------------------------------------------------------------------

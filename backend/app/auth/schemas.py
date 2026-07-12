@@ -28,3 +28,8 @@ class AuthResponse(BaseModel):
 
 class LogoutResponse(BaseModel):
     ok: bool = True
+
+
+class UserRolesUpdateRequest(BaseModel):
+    roles: list[str] = Field(..., description="List of role names to assign to the user")
+

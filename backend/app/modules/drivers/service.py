@@ -60,7 +60,9 @@ class DriverService:
     #   - safety_score is validated at schema level (0-100) but must not
     #     silently be overridden to an out-of-range value here either.
     # ------------------------------------------------------------------
-    async def update_driver(self, driver_id: str, payload: DriverUpdate) -> Driver:
+    async def update_driver(
+        self, driver_id: str, payload: DriverUpdate, actor_id: str | None = None
+    ) -> Driver:
         driver = await self.repo.get(driver_id)
 
         # Business rule: Suspended driver cannot be dispatched directly
@@ -71,6 +73,22 @@ class DriverService:
             raise ConflictError(
                 "Suspended drivers cannot be assigned to a trip directly",
                 code="DRIVER_SUSPENDED_ON_TRIP",
+            )
+
+        # Audit safety-score changes
+        if payload.safety_score is not None and payload.safety_score != driver.safety_score:
+            from app.core.audit import record_audit_event
+            record_audit_event(
+                entity_type="Driver",
+                entity_id=driver_id,
+                action="update_safety_score",
+                changes={
+                    "safety_score": {
+                        "old": int(driver.safety_score),
+                        "new": int(payload.safety_score),
+                    }
+                },
+                actor_id=actor_id,
             )
 
         return await self.repo.update(

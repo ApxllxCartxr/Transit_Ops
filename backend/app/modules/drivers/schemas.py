@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel, Field, ConfigDict
 
 from app.shared.enums import DriverStatus
@@ -31,10 +31,12 @@ class DriverUpdate(BaseModel):
 
 
 class DriverOut(DriverBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     is_license_expired: bool = False
-    created_at: str | None = None
-    updated_at: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class DriverListResponse(BaseModel):

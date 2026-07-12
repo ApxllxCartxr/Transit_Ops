@@ -20,12 +20,13 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_roles
 from app.auth.models import User, Role
-from app.auth.schemas import AuthResponse, AuthUser, LoginRequest, LogoutResponse, RegisterRequest
+from app.auth.schemas import AuthResponse, AuthUser, LoginRequest, LogoutResponse, RegisterRequest, UserRolesUpdateRequest
 from app.auth.security import create_access_token, verify_password, hash_password
 from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.audit import record_audit_event
 
 # ---------------------------------------------------------------------------
 # Rate-limiter (SEC-07: 5 attempts / 15 min / IP)
@@ -78,12 +79,26 @@ async def login(
     password_ok = verify_password(payload.password, stored_hash)
 
     if user is None or not password_ok:
+        record_audit_event(
+            entity_type="User",
+            entity_id=payload.email,
+            action="login_failure",
+            changes={"email": payload.email},
+            actor_id=None,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
     if not user.is_active:
+        record_audit_event(
+            entity_type="User",
+            entity_id=user.id,
+            action="login_failure_inactive",
+            changes={"email": user.email},
+            actor_id=user.id,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is deactivated",
@@ -121,6 +136,15 @@ async def login(
         max_age=_settings.access_token_expire_minutes * 60,
         samesite="lax",
         secure=_settings.app_env == "production",
+    )
+
+    # Record login success
+    record_audit_event(
+        entity_type="User",
+        entity_id=user.id,
+        action="login_success",
+        changes={"email": user.email},
+        actor_id=user.id,
     )
 
     return AuthResponse(
@@ -228,12 +252,22 @@ async def register(
     response_model=LogoutResponse,
     summary="Log out the current session",
 )
-async def logout(response: Response) -> LogoutResponse:
+async def logout(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+) -> LogoutResponse:
     """Clear the session cookie."""
     response.delete_cookie(
         key="better-auth.session_token",
         httponly=True,
         samesite="lax",
+    )
+    record_audit_event(
+        entity_type="User",
+        entity_id=current_user.id,
+        action="logout",
+        changes=None,
+        actor_id=current_user.id,
     )
     return LogoutResponse(ok=True)
 
@@ -258,3 +292,69 @@ async def me(user: User = Depends(get_current_user)) -> AuthUser:
         full_name=user.full_name,
         roles=[r.name for r in user.roles],
     )
+
+
+# ---------------------------------------------------------------------------
+# PUT /auth/users/{target_user_id}/roles (Admin only)
+# ---------------------------------------------------------------------------
+
+@router.put(
+    "/users/{target_user_id}/roles",
+    dependencies=[Depends(require_roles("Admin"))],
+    summary="Update roles assigned to a user",
+)
+async def update_user_roles(
+    target_user_id: str,
+    payload: UserRolesUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_user),
+):
+    """
+    Updates the roles assigned to a user.
+    Records the role changes in the audit log (entity_type="User").
+    """
+    # 1. Fetch user and their current roles
+    result = await db.execute(
+        select(User)
+        .where(User.id == target_user_id)
+        .options(selectinload(User.roles))
+    )
+    target_user = result.scalars().first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    old_role_names = [r.name for r in target_user.roles]
+
+    if not payload.roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one role name must be specified",
+        )
+
+    # 2. Retrieve specified roles from database
+    role_result = await db.execute(select(Role).where(Role.name.in_(payload.roles)))
+    new_roles = role_result.scalars().all()
+    if len(new_roles) != len(payload.roles):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="One or more specified roles are invalid",
+        )
+
+    # 3. Apply changes and commit
+    target_user.roles = new_roles
+    await db.commit()
+
+    # 4. Record audit event
+    new_role_names = [r.name for r in new_roles]
+    record_audit_event(
+        entity_type="User",
+        entity_id=target_user_id,
+        action="update_roles",
+        changes={"roles": {"old": old_role_names, "new": new_role_names}},
+        actor_id=admin_user.id,
+    )
+
+    return {"ok": True, "roles": new_role_names}
