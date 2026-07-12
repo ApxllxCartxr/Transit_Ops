@@ -202,12 +202,13 @@ async def test_audit_safety_score_change(tokens) -> None:
         assert admin_user is not None
 
     async with _make_client() as client:
-        # Create a new driver first
+        import uuid
+        lic_num = f"AUD-LIC-{uuid.uuid4().hex[:6].upper()}"
         c_res = await client.post(
             "/api/v1/drivers",
             json={
                 "full_name": "Audit Test Driver",
-                "license_number": "AUD-LIC-999",
+                "license_number": lic_num,
                 "license_category": "Class A",
                 "license_expiry": "2030-01-01",
                 "contact_number": "1234567890",

@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     app_name: str = "TransitOps"
     app_env: str = "development"
     debug: bool = True
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/transitops"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5434/transitops"
     secret_key: str = "change-me"
     access_token_expire_minutes: int = 60
     # Comma-separated allowed CORS origins.

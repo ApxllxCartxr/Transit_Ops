@@ -5,8 +5,10 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Index,
+    Numeric,
     String,
     TIMESTAMP,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -38,6 +40,9 @@ class Trip(Base):
     )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=TripStatus.DRAFT
+    )
+    revenue: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("'0.00'")
     )
     cancelled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     created_at: Mapped[str] = mapped_column(

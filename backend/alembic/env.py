@@ -17,9 +17,17 @@ from app.shared.models import AuditLog  # noqa: F401
 
 config = context.config
 
-database_url = os.environ.get("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+from app.core.config import get_settings
+
+database_url = os.environ.get("DATABASE_URL") or get_settings().database_url
+# Use psycopg v3 driver (`postgresql+psycopg://`) which supports sync queries in alembic
+if database_url.startswith("postgresql://"):
+    sync_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+elif "+asyncpg" in database_url:
+    sync_url = database_url.replace("+asyncpg", "+psycopg")
+else:
+    sync_url = database_url
+config.set_main_option("sqlalchemy.url", sync_url)
 
 if config.config_file_name is not None:
     try:

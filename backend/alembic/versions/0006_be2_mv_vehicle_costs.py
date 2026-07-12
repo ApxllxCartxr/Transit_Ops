@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "0006_be2_mv_vehicle_costs"
-down_revision: str | None = "0005_be2_fuel_expenses"
+down_revision: str | None = "a7dfb727d19b"
 branch_labels: str | tuple[str, ...] | None = None
 depends_on: str | tuple[str, ...] | None = None
 

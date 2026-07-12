@@ -207,3 +207,51 @@ async def test_logout_clears_cookie(client) -> None:
     assert "better-auth.session_token" in set_cookie
     # Starlette delete_cookie sets max-age=0
     assert "max-age=0" in set_cookie.lower()
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/register
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_register_user_success(client) -> None:
+    from sqlalchemy import select
+    test_email = "new_manager@transitops.dev"
+    test_password = "SecurePassword@123!"
+    test_name = "New Manager"
+
+    try:
+        res = await client.post(
+            "/api/v1/auth/register",
+            json={"email": test_email, "password": test_password, "name": test_name},
+        )
+        assert res.status_code == 200, res.text
+        body = res.json()
+        assert body["token"]
+        user = body["user"]
+        assert user["email"] == test_email
+        assert user["full_name"] == test_name
+        assert "Fleet Manager" in user["roles"]
+        assert "better-auth.session_token" in res.cookies
+    finally:
+        # Cleanup
+        async with _SessionLocal() as session:
+            from sqlalchemy import delete
+            from app.auth.models import UserRole
+            result = await session.execute(select(User).where(User.email == test_email))
+            user_to_delete = result.scalars().first()
+            if user_to_delete:
+                await session.execute(delete(UserRole).where(UserRole.user_id == user_to_delete.id))
+                await session.delete(user_to_delete)
+                await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_register_duplicate_email(client) -> None:
+    res = await client.post(
+        "/api/v1/auth/register",
+        json={"email": ADMIN_EMAIL, "password": "SomePassword1!", "name": "Fake Admin"},
+    )
+    assert res.status_code == 400
+    assert "already exists" in res.json()["detail"]
+

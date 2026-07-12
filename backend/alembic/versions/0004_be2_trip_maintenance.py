@@ -28,6 +28,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("'Draft'"),
         ),
+        sa.Column("revenue", sa.Numeric(10, 2), nullable=False, server_default=sa.text("'0.00'")),
         sa.Column("cancelled", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column(
             "created_at",

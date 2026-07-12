@@ -1,135 +1,372 @@
 @import "tailwindcss";
 
-:root {
-  --background: 210 20% 98%; /* Slate 50-like */
-  --foreground: 224 71.4% 4.1%; /* Near Black */
-  
-  --card: 0 0% 100%;
-  --card-foreground: 224 71.4% 4.1%;
- 
-  --popover: 0 0% 100%;
-  --popover-foreground: 224 71.4% 4.1%;
- 
-  --primary: 262.1 83.3% 57.8%; /* Indigo-600 */
-  --primary-foreground: 210 20% 98%;
- 
-  --secondary: 220 14.3% 95.9%;
-  --secondary-foreground: 220.9 39.3% 11%;
- 
-  --muted: 220 14.3% 95.9%;
-  --muted-foreground: 220 8.9% 46.1%;
- 
-  --accent: 220 14.3% 95.9%;
-  --accent-foreground: 220.9 39.3% 11%;
- 
-  /* Status Color Map per SRS §9.3 */
-  /* Available/Completed -> green */
-  --status-success: 142.1 76.2% 36.3%;
-  --status-success-foreground: 138.5 76.5% 96.7%;
+/* ============================================================
+   DESIGN TOKENS — DARK MODE (Primary)
+   DESIGN.md §2
+   ============================================================ */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
 
-  /* OnTrip/Dispatched -> blue */
-  --status-info: 217.2 91.2% 59.8%;
-  --status-info-foreground: 210 40% 96.1%;
+  /* ---------- Surfaces (tiered depth) ---------- */
+  --surface-0:        #0A0A0B;
+  --surface-1:        #111113;
+  --surface-2:        #17171A;
+  --surface-3:        #1E1E22;
+  --surface-4:        #26262B;
+  --surface-inverse:  #F5F5F7;
 
-  /* InShop/OffDuty/Draft -> amber */
-  --status-warning: 37.9 92.1% 50.2%;
-  --status-warning-foreground: 38 92% 95%;
+  /* ---------- Borders ---------- */
+  --border-subtle:    rgba(255, 255, 255, 0.06);
+  --border-default:   rgba(255, 255, 255, 0.09);
+  --border-strong:    rgba(255, 255, 255, 0.14);
+  --border-focus:     #6E7BFF;
 
-  /* Retired/Suspended/Cancelled -> red/gray */
-  --status-danger: 0 84.2% 60.2%;
-  --status-danger-foreground: 0 85.7% 97.3%;
-  
-  --status-muted: 215.4 16.3% 46.9%;
-  --status-muted-foreground: 210 40% 96.1%;
- 
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --ring: 262.1 83.3% 57.8%;
- 
-  --radius: 0.75rem;
+  /* ---------- Text ---------- */
+  --text-primary:     #F4F4F5;
+  --text-secondary:   #A1A1AA;
+  --text-tertiary:    #71717A;
+  --text-disabled:    #52525B;
+  --text-inverse:     #0A0A0B;
+
+  /* ---------- Brand & Accent ---------- */
+  --accent-primary:       #6E7BFF;
+  --accent-primary-hover: #8590FF;
+  --accent-primary-soft:  rgba(110, 123, 255, 0.12);
+  --accent-secondary:     #B57BFF;
+
+  /* ---------- Semantic (status) ---------- */
+  --status-pending-fg:      #F5A524;
+  --status-pending-bg:      rgba(245, 165, 36, 0.10);
+  --status-pending-border:  rgba(245, 165, 36, 0.22);
+
+  --status-progress-fg:     #38BDF8;
+  --status-progress-bg:     rgba(56, 189, 248, 0.10);
+  --status-progress-border: rgba(56, 189, 248, 0.22);
+
+  --status-success-fg:      #34D399;
+  --status-success-bg:      rgba(52, 211, 153, 0.10);
+  --status-success-border:  rgba(52, 211, 153, 0.22);
+
+  --status-failed-fg:       #F87171;
+  --status-failed-bg:       rgba(248, 113, 113, 0.10);
+  --status-failed-border:   rgba(248, 113, 113, 0.22);
+
+  --status-warning-fg:      #FBBF24;
+  --status-warning-bg:      rgba(251, 191, 36, 0.10);
+  --status-warning-border:  rgba(251, 191, 36, 0.22);
+
+  --status-info-fg:         #38BDF8;
+  --status-info-bg:         rgba(56, 189, 248, 0.10);
+  --status-info-border:     rgba(56, 189, 248, 0.22);
+
+  --status-muted-fg:        #A1A1AA;
+  --status-muted-bg:        rgba(161, 161, 170, 0.08);
+  --status-muted-border:    rgba(161, 161, 170, 0.18);
+
+  /* ---------- Data-viz palette ---------- */
+  --viz-1: #6E7BFF;
+  --viz-2: #34D399;
+  --viz-3: #F5A524;
+  --viz-4: #F472B6;
+  --viz-5: #38BDF8;
+  --viz-6: #A78BFA;
+
+  /* ---------- Effects ---------- */
+  --glow-success:   0 0 24px -4px rgba(52, 211, 153, 0.35);
+  --glow-accent:    0 0 24px -4px rgba(110, 123, 255, 0.35);
+  --shadow-card:    0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px -12px rgba(0,0,0,0.6);
+  --shadow-popover: 0 12px 32px -8px rgba(0,0,0,0.65), 0 0 0 1px var(--border-subtle);
+  --shadow-modal:   0 24px 64px -16px rgba(0,0,0,0.7);
+
+  /* ---------- Motion ---------- */
+  --dur-instant: 80ms;
+  --dur-fast:    140ms;
+  --dur-base:    220ms;
+  --dur-slow:    360ms;
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dark {
-  --background: 224 71.4% 4.1%; /* Rich Near Black */
-  --foreground: 210 20% 98%;
- 
-  --card: 224 71.4% 4.1%;
-  --card-foreground: 210 20% 98%;
- 
-  --popover: 224 71.4% 4.1%;
-  --popover-foreground: 210 20% 98%;
- 
-  --primary: 263.4 70% 50.4%; /* Slightly lighter violet/indigo for contrast */
-  --primary-foreground: 210 20% 98%;
- 
-  --secondary: 215 27.9% 16.9%;
-  --secondary-foreground: 210 20% 98%;
- 
-  --muted: 215 27.9% 16.9%;
-  --muted-foreground: 217.9 10.6% 64.9%;
- 
-  --accent: 215 27.9% 16.9%;
-  --accent-foreground: 210 20% 98%;
- 
-  --border: 215 27.9% 16.9%;
-  --input: 215 27.9% 16.9%;
-  --ring: 263.4 70% 50.4%;
-  
-  --status-success: 142.1 70.6% 45.3%;
-  --status-success-foreground: 138.5 10% 90%;
+/* ============================================================
+   DESIGN TOKENS — LIGHT MODE (Paired)
+   DESIGN.md §3
+   ============================================================ */
+[data-theme="light"] {
+  color-scheme: light;
 
-  --status-info: 217.2 91.2% 59.8%;
-  --status-info-foreground: 210 40% 95%;
+  --surface-0:        #FAFAF9;
+  --surface-1:        #FFFFFF;
+  --surface-2:        #FFFFFF;
+  --surface-3:        #F4F4F5;
+  --surface-4:        #FFFFFF;
+  --surface-inverse:  #17171A;
 
-  --status-warning: 37.9 92.1% 50.2%;
-  --status-warning-foreground: 38 92% 95%;
+  --border-subtle:    rgba(15, 23, 42, 0.06);
+  --border-default:   rgba(15, 23, 42, 0.10);
+  --border-strong:    rgba(15, 23, 42, 0.16);
+  --border-focus:     #4F46E5;
 
-  --status-danger: 0 84.2% 60.2%;
-  --status-danger-foreground: 0 85.7% 97.3%;
+  --text-primary:     #0A0A0B;
+  --text-secondary:   #52525B;
+  --text-tertiary:    #71717A;
+  --text-disabled:    #A1A1AA;
+  --text-inverse:     #FAFAF9;
+
+  --accent-primary:       #4F46E5;
+  --accent-primary-hover: #6366F1;
+  --accent-primary-soft:  rgba(79, 70, 229, 0.08);
+  --accent-secondary:     #7C3AED;
+
+  --status-pending-fg:      #B45309;
+  --status-pending-bg:      #FEF3C7;
+  --status-pending-border:  #FDE68A;
+
+  --status-progress-fg:     #0369A1;
+  --status-progress-bg:     #E0F2FE;
+  --status-progress-border: #BAE6FD;
+
+  --status-success-fg:      #047857;
+  --status-success-bg:      #D1FAE5;
+  --status-success-border:  #A7F3D0;
+
+  --status-failed-fg:       #B91C1C;
+  --status-failed-bg:       #FEE2E2;
+  --status-failed-border:   #FECACA;
+
+  --status-warning-fg:      #92400E;
+  --status-warning-bg:      #FEF3C7;
+  --status-warning-border:  #FDE68A;
+
+  --status-info-fg:         #0369A1;
+  --status-info-bg:         #E0F2FE;
+  --status-info-border:     #BAE6FD;
+
+  --status-muted-fg:        #52525B;
+  --status-muted-bg:        #F4F4F5;
+  --status-muted-border:    #E4E4E7;
+
+  --viz-1: #4F46E5;
+  --viz-2: #059669;
+  --viz-3: #D97706;
+  --viz-4: #DB2777;
+  --viz-5: #0284C7;
+  --viz-6: #7C3AED;
+
+  --glow-success:   0 0 20px -4px rgba(5, 150, 105, 0.20);
+  --glow-accent:    0 0 20px -4px rgba(79, 70, 229, 0.18);
+  --shadow-card:    0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.08);
+  --shadow-popover: 0 12px 32px -8px rgba(15,23,42,0.12), 0 0 0 1px var(--border-subtle);
+  --shadow-modal:   0 24px 64px -16px rgba(15,23,42,0.18);
 }
 
+/* ============================================================
+   TAILWIND v4 @theme WIRING
+   ============================================================ */
 @theme {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  
-  --color-status-success: hsl(var(--status-success));
-  --color-status-success-foreground: hsl(var(--status-success-foreground));
-  --color-status-info: hsl(var(--status-info));
-  --color-status-info-foreground: hsl(var(--status-info-foreground));
-  --color-status-warning: hsl(var(--status-warning));
-  --color-status-warning-foreground: hsl(var(--status-warning-foreground));
-  --color-status-danger: hsl(var(--status-danger));
-  --color-status-danger-foreground: hsl(var(--status-danger-foreground));
-  --color-status-muted: hsl(var(--status-muted));
-  --color-status-muted-foreground: hsl(var(--status-muted-foreground));
+  /* Surfaces */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-surface-inverse: var(--surface-inverse);
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-inverse: var(--text-inverse);
+
+  /* Accent */
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-primary-hover);
+  --color-accent-soft: var(--accent-primary-soft);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+
+  /* Status — success */
+  --color-status-success: var(--status-success-fg);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-border: var(--status-success-border);
+
+  /* Status — failed/danger */
+  --color-status-failed: var(--status-failed-fg);
+  --color-status-failed-bg: var(--status-failed-bg);
+  --color-status-failed-border: var(--status-failed-border);
+
+  /* Status — warning */
+  --color-status-warning: var(--status-warning-fg);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-warning-border: var(--status-warning-border);
+
+  /* Status — info/progress */
+  --color-status-info: var(--status-info-fg);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-info-border: var(--status-info-border);
+
+  /* Status — muted */
+  --color-status-muted: var(--status-muted-fg);
+  --color-status-muted-bg: var(--status-muted-bg);
+  --color-status-muted-border: var(--status-muted-border);
+
+  /* Radii (DESIGN.md §5) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans), "Inter", system-ui, sans-serif;
+  --font-display: var(--font-geist-sans), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* ============================================================
+   BASE RESET & DEFAULTS
+   ============================================================ */
 * {
-  border-color: hsl(var(--border));
-  outline-color: hsl(var(--ring));
+  border-color: var(--border-default);
+  outline-color: var(--border-focus);
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--surface-0);
+  color: var(--text-primary);
   font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Theme transition — surface colors only, never text */
+[data-theme] {
+  transition: background-color 180ms ease-out;
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES (DESIGN.md §4)
+   ============================================================ */
+.text-display-2xl {
+  font-size: 3.5rem;     /* 56px */
+  line-height: 3.75rem;  /* 60px */
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.text-display-xl {
+  font-size: 2.75rem;    /* 44px */
+  line-height: 3rem;     /* 48px */
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.text-display-lg {
+  font-size: 2rem;       /* 32px */
+  line-height: 2.375rem; /* 38px */
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.text-h1 {
+  font-size: 1.5rem;     /* 24px */
+  line-height: 1.875rem; /* 30px */
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.text-h2 {
+  font-size: 1.25rem;    /* 20px */
+  line-height: 1.625rem; /* 26px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.text-h3 {
+  font-size: 1rem;       /* 16px */
+  line-height: 1.375rem; /* 22px */
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.text-body {
+  font-size: 0.875rem;   /* 14px */
+  line-height: 1.25rem;  /* 20px */
+  font-weight: 400;
+}
+.text-body-sm {
+  font-size: 0.8125rem;  /* 13px */
+  line-height: 1.125rem; /* 18px */
+  font-weight: 400;
+}
+.text-caption {
+  font-size: 0.75rem;    /* 12px */
+  line-height: 1rem;     /* 16px */
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.text-overline {
+  font-size: 0.6875rem;  /* 11px */
+  line-height: 0.875rem; /* 14px */
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.text-mono-data {
+  font-size: 0.8125rem;  /* 13px */
+  line-height: 1.125rem; /* 18px */
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-geist-mono), "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Tabular nums utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   SHIMMER ANIMATION (DESIGN.md §10 Loading strategy)
+   ============================================================ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-3) 40%,
+    var(--surface-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ============================================================
+   REDUCED MOTION (DESIGN.md §8)
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   SCROLLBAR STYLING (for dark mode elegance)
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }

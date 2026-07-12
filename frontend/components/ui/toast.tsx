@@ -80,12 +80,27 @@ interface ToastItemProps {
 }
 
 function ToastItem({ toast, onClose }: ToastItemProps) {
-  const bgColor = {
-    success: "bg-status-success/10 border-status-success/30 text-status-success",
-    error: "bg-status-danger/10 border-status-danger/30 text-status-danger",
-    warning:
-      "bg-status-warning/10 border-status-warning/30 text-status-warning",
-    info: "bg-status-info/10 border-status-info/30 text-status-info",
+  const styles: Record<ToastType, { bg: string; border: string; text: string }> = {
+    success: {
+      bg: "var(--status-success-bg)",
+      border: "var(--status-success-border)",
+      text: "var(--status-success-fg)",
+    },
+    error: {
+      bg: "var(--status-failed-bg)",
+      border: "var(--status-failed-border)",
+      text: "var(--status-failed-fg)",
+    },
+    warning: {
+      bg: "var(--status-warning-bg)",
+      border: "var(--status-warning-border)",
+      text: "var(--status-warning-fg)",
+    },
+    info: {
+      bg: "var(--status-info-bg)",
+      border: "var(--status-info-border)",
+      text: "var(--status-info-fg)",
+    },
   };
 
   const Icon = {
@@ -95,20 +110,28 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
     info: Info,
   }[toast.type];
 
+  const s = styles[toast.type];
+
   return (
     <div
-      className={`flex items-start gap-3 rounded-lg border p-4 ${bgColor[toast.type]} shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300`}
+      className="flex items-start gap-3 rounded-[10px] border p-4 backdrop-blur-sm"
+      style={{
+        backgroundColor: s.bg,
+        borderColor: s.border,
+        color: s.text,
+        boxShadow: "var(--shadow-popover)",
+      }}
       role="alert"
       aria-live="polite"
     >
-      <Icon className="h-5 w-5 shrink-0 mt-0.5" />
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
+      <Icon className="h-5 w-5 shrink-0 mt-0.5" strokeWidth={1.5} />
+      <p className="flex-1 text-[13px] font-medium">{toast.message}</p>
       <button
         onClick={onClose}
-        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
+        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity duration-[80ms]"
         aria-label="Close notification"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" strokeWidth={1.5} />
       </button>
     </div>
   );
