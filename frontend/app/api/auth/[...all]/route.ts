@@ -89,7 +89,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // Forward client's IP to the backend to support rate limiting
-      const clientIp = request.headers.get("x-forwarded-for") || request.ip || "";
+      const clientIp = request.headers.get("x-forwarded-for") || (request as any).ip || "";
       const headers: Record<string, string> = {};
       if (clientIp) {
         headers["X-Forwarded-For"] = clientIp;
