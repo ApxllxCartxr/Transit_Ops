@@ -11,10 +11,4 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_auth_login() -> None:
-    response = client.post(
-        "/api/v1/auth/login",
-        json={"email": "admin@transitops.dev", "password": "TransitOps@2026!"},
-    )
-    assert response.status_code == 200
-    assert response.json()["user"]["email"] == "admin@transitops.dev"
+

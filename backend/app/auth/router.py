@@ -15,8 +15,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
@@ -60,8 +61,14 @@ async def login(
     Intentionally identical error for wrong email and wrong password to
     prevent user-enumeration.
     """
-    # Fetch user by email
-    result = await db.execute(select(User).where(User.email == payload.email))
+    # Fetch user + roles eagerly in one query (selectinload avoids a second
+    # round-trip and prevents 'another operation in progress' on asyncpg when
+    # we later commit the last_login_at update).
+    result = await db.execute(
+        select(User)
+        .where(User.email == payload.email)
+        .options(selectinload(User.roles))
+    )
     user: User | None = result.scalars().first()
 
     # Always run verify_password even on a missing user to prevent timing attacks
@@ -81,7 +88,7 @@ async def login(
             detail="User account is deactivated",
         )
 
-    # Collect role names (selectin-loaded by ORM relationship)
+    # Collect role names from the already-loaded relationship
     role_names: list[str] = [r.name for r in user.roles]
 
     # Mint JWT
@@ -91,12 +98,19 @@ async def login(
         roles=role_names,
     )
 
-    # Stamp last_login_at — best-effort, non-fatal if it fails
+    # Stamp last_login_at in a dedicated session so it never conflicts with
+    # the query/selectin transaction that is still open on `db`.
+    from app.core.db import AsyncSessionLocal  # local import avoids circular
     try:
-        user.last_login_at = datetime.now(tz=timezone.utc)
-        await db.commit()
+        async with AsyncSessionLocal() as stamp_session:
+            await stamp_session.execute(
+                update(User)
+                .where(User.id == user.id)
+                .values(last_login_at=datetime.now(tz=timezone.utc))
+            )
+            await stamp_session.commit()
     except Exception:
-        await db.rollback()
+        pass  # best-effort — do not fail the login on a bookkeeping error
 
     # Write cookie — HttpOnly, Lax, 24 h
     response.set_cookie(
