@@ -28,7 +28,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        const errorMsg = typeof authError === "string" ? authError : authError.message || "Invalid credentials";
+        const errorMsg = typeof authError === "string" ? authError : (authError as any).message || "Invalid credentials";
         setError(errorMsg);
         addToast(errorMsg, "error");
       } else {

@@ -76,7 +76,7 @@ export default function SignUpPage() {
         const errorMsg =
           typeof authError === "string"
             ? authError
-            : authError.message || "Sign up failed";
+            : (authError as any).message || "Sign up failed";
         setError(errorMsg);
         addToast(errorMsg, "error");
       } else if (data) {
