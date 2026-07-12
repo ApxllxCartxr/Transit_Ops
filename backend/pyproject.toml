@@ -17,6 +17,7 @@ dependencies = [
   "bcrypt>=4.0.0",
   "python-jose[cryptography]>=3.3.0",
   "slowapi>=0.1.9",
+  "weasyprint>=57.0",
 ]
 
 [project.optional-dependencies]
