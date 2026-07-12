@@ -100,10 +100,15 @@ class MaintenanceService:
         stmt = select(Vehicle).where(Vehicle.id == vehicle_id).with_for_update()
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+from app.core.exceptions import TransitOpsError
+from fastapi import status
 
-
-class MaintenanceTransitionError(ValueError):
+class MaintenanceTransitionError(TransitOpsError):
     def __init__(self, code: str, message: str):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+        status_code = status.HTTP_400_BAD_REQUEST
+        if code in ("VEHICLE_NOT_FOUND", "MAINTENANCE_NOT_FOUND"):
+            status_code = status.HTTP_404_NOT_FOUND
+        elif code == "MAINTENANCE_CONFLICT":
+            status_code = status.HTTP_409_CONFLICT
+        super().__init__(message, status_code=status_code, code=code)
+
