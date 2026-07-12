@@ -35,3 +35,26 @@ export interface DashboardKpis {
   totalVehicles: number;
   totalDrivers: number;
 }
+
+export type TripStatus = "Draft" | "Dispatched" | "Completed" | "Cancelled";
+
+export interface Trip {
+  id: string;
+  vehicle_id: string;
+  driver_id: string;
+  status: TripStatus;
+  cancelled: boolean;
+  created_at: string;
+  updated_at: string;
+  // Enriched fields populated by the list endpoint (joined from vehicles/drivers)
+  vehicle_registration?: string;
+  vehicle_name?: string;
+  driver_name?: string;
+}
+
+export interface PaginatedTrips {
+  items: Trip[];
+  total: number;
+  page: number;
+  size: number;
+}
