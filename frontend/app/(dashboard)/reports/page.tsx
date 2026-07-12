@@ -11,7 +11,7 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { Download, Filter, BarChart3, Loader2 } from "lucide-react";
+import { Download, Filter, Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { ReportsSummary } from "@/types/api";
@@ -45,6 +45,7 @@ export default function ReportsPage() {
   const [report, setReport] = useState<ReportsSummary | null>(null);
   const [acquisitionCost, setAcquisitionCost] = useState("50000");
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReport = useCallback(async () => {
@@ -64,6 +65,20 @@ export default function ReportsPage() {
       setIsLoading(false);
     }
   }, [acquisitionCost, addToast]);
+
+  const downloadCsv = useCallback(() => {
+    setIsExporting(true);
+    const params = new URLSearchParams();
+    params.set("acquisition_cost", acquisitionCost);
+    const url = `/api/v1/exports/csv?${params.toString()}`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "trips.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => setIsExporting(false), 500);
+  }, [acquisitionCost]);
 
   useEffect(() => {
     fetchReport();
@@ -120,11 +135,12 @@ export default function ReportsPage() {
         </div>
         <button
           type="button"
-          onClick={exportCsv}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
+          onClick={downloadCsv}
+          disabled={isExporting}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-50"
         >
           <Download className="h-4 w-4" />
-          Export CSV
+          {isExporting ? "Downloading..." : "Export CSV"}
         </button>
       </div>
 
