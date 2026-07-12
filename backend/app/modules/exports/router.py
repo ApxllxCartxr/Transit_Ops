@@ -1,6 +1,14 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Depends, Response
 
-router = APIRouter(prefix="/api/v1/exports", tags=["exports"])
+from app.auth.dependencies import require_roles
+
+ALL_ROLES = ["Admin", "Fleet Manager", "Dispatcher", "Safety Officer", "Financial Analyst"]
+
+router = APIRouter(
+    prefix="/api/v1/exports",
+    tags=["exports"],
+    dependencies=[Depends(require_roles(*ALL_ROLES))],
+)
 
 
 @router.get("/csv")
