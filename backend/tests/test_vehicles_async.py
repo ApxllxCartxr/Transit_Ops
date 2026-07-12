@@ -243,3 +243,65 @@ async def test_service_list_vehicles_pagination(async_session: AsyncSession) -> 
 
     _, page2 = await svc.list_vehicles(page=2, size=3)
     assert len(page2) == 2
+
+
+@pytest.mark.asyncio
+async def test_db_odometer_monotonic_trigger(async_session: AsyncSession) -> None:
+    """DB-level trigger must reject odometer decreases even if service layer is bypassed."""
+    # SQLite in-memory test DB doesn't run PL/pgSQL triggers
+    if "sqlite" in str(async_session.bind.url):
+        pytest.skip("PostgreSQL DDL triggers are not supported/configured in SQLite tests")
+
+    from app.modules.vehicles.schemas import VehicleCreate
+    from sqlalchemy import update
+    from sqlalchemy.exc import IntegrityError
+    svc = VehicleService(async_session)
+
+    schema = VehicleCreate(**_vehicle_payload(odometer_km=500.0))
+    vehicle = await svc.create_vehicle(schema)
+
+    # Bypass the service layer, execute raw update
+    stmt = (
+        update(Vehicle)
+        .where(Vehicle.id == vehicle.id)
+        .values(odometer_km=400.0)
+    )
+    with pytest.raises(IntegrityError, match="odometer reading cannot decrease"):
+        await async_session.execute(stmt)
+        await async_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_db_updated_at_trigger(async_session: AsyncSession) -> None:
+    """DB-level set_updated_at trigger must stamp updated_at = NOW() on UPDATE."""
+    if "sqlite" in str(async_session.bind.url):
+        pytest.skip("PostgreSQL DDL triggers are not supported/configured in SQLite tests")
+
+    from app.modules.vehicles.schemas import VehicleCreate
+    from sqlalchemy import update, select
+    import asyncio
+    svc = VehicleService(async_session)
+
+    schema = VehicleCreate(**_vehicle_payload(name="Original Name"))
+    vehicle = await svc.create_vehicle(schema)
+    t1 = vehicle.updated_at
+
+    await asyncio.sleep(0.1)
+
+    # Perform direct update bypassing service layer
+    stmt = (
+        update(Vehicle)
+        .where(Vehicle.id == vehicle.id)
+        .values(name="Updated Name")
+    )
+    await async_session.execute(stmt)
+    await async_session.commit()
+
+    # Refetch specific column to avoid ORM lazy load / MissingGreenlet
+    result = await async_session.execute(
+        select(Vehicle.updated_at).where(Vehicle.id == vehicle.id)
+    )
+    t2 = result.scalar()
+    assert t2 > t1
+
+

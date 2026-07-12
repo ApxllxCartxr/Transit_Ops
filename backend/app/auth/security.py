@@ -33,9 +33,17 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Return True iff *plain* matches the stored bcrypt *hashed* digest."""
+    """Return True iff *plain* matches the stored bcrypt *hashed* digest.
+
+    bcrypt ≥5.0 raises ``ValueError('Invalid salt')`` instead of returning
+    False for malformed hashes, so we must catch all exceptions here.
+    The dummy-hash constant-time guard in router.py still prevents timing
+    attacks when no user record is found.
+    """
     try:
-        return bcrypt.checkpw(plain.encode(), hashed.encode())
+        pw_bytes = plain.encode("utf-8")
+        hash_bytes = hashed.encode("utf-8") if isinstance(hashed, str) else hashed
+        return bcrypt.checkpw(pw_bytes, hash_bytes)
     except Exception:
         return False
 

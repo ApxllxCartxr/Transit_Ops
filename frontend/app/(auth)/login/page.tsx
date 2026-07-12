@@ -3,10 +3,13 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Truck, Lock, Mail, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { Truck, Lock, Mail, Eye, EyeOff, Loader2, ShieldAlert, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,13 +28,18 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message || "Failed to sign in. Please check your credentials.");
+        const errorMsg = typeof authError === "string" ? authError : authError.message || "Invalid credentials";
+        setError(errorMsg);
+        addToast(errorMsg, "error");
       } else {
+        addToast("Signed in successfully!", "success");
         router.push("/dashboard");
         router.refresh();
       }
     } catch (err: any) {
-      setError("An unexpected error occurred. Please try again.");
+      const errorMsg = "An unexpected error occurred. Please try again.";
+      setError(errorMsg);
+      addToast(errorMsg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +47,7 @@ export default function LoginPage() {
 
   const fillDemoRole = (roleEmail: string) => {
     setEmail(roleEmail);
-    setPassword("password123");
+    setPassword("TransitOps@2026!");
   };
 
   return (
@@ -146,13 +154,13 @@ export default function LoginPage() {
             Demo Credentials & RBAC Profiles
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 text-center">
-            Click a profile to automatically pre-fill login inputs. Use password <strong>password123</strong>.
+            Click a profile to automatically pre-fill login inputs. Use password <strong>TransitOps@2026!</strong>.
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               id="demo-admin"
               type="button"
-              onClick={() => fillDemoRole("admin@transitops.com")}
+              onClick={() => fillDemoRole("admin@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Admin</span>
@@ -161,7 +169,7 @@ export default function LoginPage() {
             <button
               id="demo-fleet"
               type="button"
-              onClick={() => fillDemoRole("fleet@transitops.com")}
+              onClick={() => fillDemoRole("fleet@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Fleet Manager</span>
@@ -170,7 +178,7 @@ export default function LoginPage() {
             <button
               id="demo-dispatch"
               type="button"
-              onClick={() => fillDemoRole("dispatch@transitops.com")}
+              onClick={() => fillDemoRole("dispatch@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Dispatcher</span>
@@ -179,7 +187,7 @@ export default function LoginPage() {
             <button
               id="demo-safety"
               type="button"
-              onClick={() => fillDemoRole("safety@transitops.com")}
+              onClick={() => fillDemoRole("safety@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Safety Officer</span>
@@ -188,13 +196,27 @@ export default function LoginPage() {
             <button
               id="demo-finance"
               type="button"
-              onClick={() => fillDemoRole("finance@transitops.com")}
+              onClick={() => fillDemoRole("finance@transitops.dev")}
               className="col-span-2 flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Financial Analyst</span>
               <span className="text-[10px] text-slate-450 dark:text-slate-500">Expenses, Fuel & ROI Reports</span>
             </button>
           </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="text-center">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Don't have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Create one now
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </p>
         </div>
       </div>
     </div>

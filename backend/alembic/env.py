@@ -15,8 +15,16 @@ from app.modules.costs.models import FuelLog, Expense  # noqa: F401
 from app.auth.models import User, Role, UserRole  # noqa: F401
 
 config = context.config
+
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    try:
+        fileConfig(config.config_file_name)
+    except Exception:
+        pass
 
 target_metadata = Base.metadata
 

@@ -19,6 +19,8 @@ import {
 import { apiClient } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { isActionAllowed } from "@/lib/rbac-guards";
+import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Driver {
   id: string;
@@ -40,6 +42,7 @@ interface PaginatedDrivers {
 
 export default function DriversPage() {
   const { data: session } = authClient.useSession();
+  const { addToast } = useToast();
   const userRole = (session?.user as any)?.role || "SafetyOfficer";
 
   // Data states
@@ -66,14 +69,6 @@ export default function DriversPage() {
     safety_score: "100",
     status: "Available" as Driver["status"],
   });
-
-  // Toasts
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const fetchDrivers = useCallback(async () => {
     setIsLoading(true);
@@ -127,7 +122,7 @@ export default function DriversPage() {
 
   const handleOpenCreate = () => {
     if (!isActionAllowed(userRole, "create", "drivers")) {
-      showToast("Access Denied: You do not have permission to add drivers.", "error");
+      addToast("Access Denied: You do not have permission to add drivers.", "error");
       return;
     }
     setEditingDriver(null);
@@ -146,7 +141,7 @@ export default function DriversPage() {
 
   const handleOpenEdit = (driver: Driver) => {
     if (!isActionAllowed(userRole, "edit", "drivers")) {
-      showToast("Access Denied: You do not have permission to edit drivers.", "error");
+      addToast("Access Denied: You do not have permission to edit drivers.", "error");
       return;
     }
     setEditingDriver(driver);
@@ -192,10 +187,10 @@ export default function DriversPage() {
 
       if (editingDriver) {
         await apiClient.patch(`drivers/${editingDriver.id}`, payload);
-        showToast("Driver profile updated.");
+        addToast("Driver profile updated.", "success");
       } else {
         await apiClient.post("drivers", payload);
-        showToast("Driver registered successfully.");
+        addToast("Driver registered successfully.", "success");
       }
 
       setDrawerOpen(false);
@@ -207,23 +202,23 @@ export default function DriversPage() {
 
   const handleDelete = async (driverId: string) => {
     if (!isActionAllowed(userRole, "delete", "drivers")) {
-      showToast("Access Denied: You do not have permission to remove drivers.", "error");
+      addToast("Access Denied: You do not have permission to remove drivers.", "error");
       return;
     }
 
     const d = drivers.find(item => item.id === driverId);
     if (d && d.status === "OnTrip") {
-      showToast("Cannot remove a driver currently executing a trip.", "error");
+      addToast("Cannot remove a driver currently executing a trip.", "error");
       return;
     }
 
     if (confirm("Are you sure you want to remove this driver from the roster? This cannot be undone.")) {
       try {
         await apiClient.delete(`drivers/${driverId}`);
-        showToast("Driver removed from roster.");
+        addToast("Driver removed from roster.", "success");
         fetchDrivers();
       } catch (err: any) {
-        showToast(err.message || "Failed to remove driver.", "error");
+        addToast(err.message || "Failed to remove driver.", "error");
       }
     }
   };
@@ -252,18 +247,6 @@ export default function DriversPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative">
-      {/* Toast popup */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-sm animate-in fade-in slide-in-from-top-4 duration-300 ${
-          toast.type === "success" 
-            ? "bg-white border-status-success/30 text-status-success dark:bg-slate-900" 
-            : "bg-white border-status-danger/30 text-status-danger dark:bg-slate-900"
-        }`}>
-          {toast.type === "success" ? <Check className="h-4.5 w-4.5" /> : <AlertCircle className="h-4.5 w-4.5" />}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* Header controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -363,8 +346,16 @@ export default function DriversPage() {
                 ))
               ) : drivers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    No drivers registered on the roster.
+                  <td colSpan={isActionAllowed(userRole, "edit", "drivers") ? 8 : 7} className="px-6 py-12">
+                    <EmptyState
+                      icon={Users}
+                      title="No drivers registered"
+                      description={search || statusFilter !== "all" ? "Try adjusting your filters or search terms" : "Register your first driver to get started"}
+                      action={!search && statusFilter === "all" && isActionAllowed(userRole, "create", "drivers") ? {
+                        label: "Register Driver",
+                        onClick: handleOpenCreate
+                      } : undefined}
+                    />
                   </td>
                 </tr>
               ) : (

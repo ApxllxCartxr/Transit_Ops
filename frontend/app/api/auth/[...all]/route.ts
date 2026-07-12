@@ -1,42 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
+import { decodeJwt, normalizeAndMapRole, isSessionExpired } from "@/lib/auth-utils";
 
-// Helper to parse role from email
-function getRoleFromEmail(email: string): string {
-  const parts = email.split("@")[0].toLowerCase();
-  if (parts.includes("admin")) return "Admin";
-  if (parts.includes("fleet")) return "FleetManager";
-  if (parts.includes("dispatch")) return "Dispatcher";
-  if (parts.includes("safety")) return "SafetyOfficer";
-  if (parts.includes("finance") || parts.includes("analyst")) return "FinancialAnalyst";
-  return "FleetManager"; // Default role
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Reusable backend fetching helper
+async function callBackend(path: string, method: "GET" | "POST", body?: any, headers: Record<string, string> = {}) {
+  const url = `${BACKEND_URL}${path}`;
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return response;
+  } catch (error) {
+    console.error(`Backend connectivity failure on ${method} ${url}:`, error);
+    return null; // Return null to represent connection timeout/failures
+  }
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ all: string[] }> }) {
   const resolvedParams = await params;
   const path = resolvedParams.all.join("/");
 
-  if (path === "session") {
+  if (path === "get-session" || path === "session") {
     const sessionToken = request.cookies.get("better-auth.session_token")?.value;
-
-    if (!sessionToken || !sessionToken.startsWith("mock_session:")) {
+    if (!sessionToken) {
       return NextResponse.json(null);
     }
 
-    const [_, email, role] = sessionToken.split(":");
-    const name = email.split("@")[0].replace(/[^a-zA-Z]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+    const jwtPayload = decodeJwt(sessionToken);
+    if (!jwtPayload || isSessionExpired(jwtPayload.exp)) {
+      const response = NextResponse.json(null);
+      response.cookies.delete("better-auth.session_token");
+      return response;
+    }
 
+    // Validate the token by hitting the backend source-of-truth /me endpoint
+    const backendRes = await callBackend("/api/v1/auth/me", "GET", undefined, {
+      "Authorization": `Bearer ${sessionToken}`,
+    });
+
+    if (!backendRes || !backendRes.ok) {
+      const response = NextResponse.json(null);
+      response.cookies.delete("better-auth.session_token");
+      return response;
+    }
+
+    const userData = await backendRes.json();
     return NextResponse.json({
       session: {
-        id: "mock-session-id",
-        userId: "mock-user-id",
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        id: sessionToken,
+        userId: userData.id,
+        expiresAt: new Date(jwtPayload.exp * 1000).toISOString(),
         token: sessionToken,
       },
       user: {
-        id: "mock-user-id",
-        email,
-        name,
-        role,
+        id: userData.id,
+        email: userData.email,
+        name: userData.full_name,
+        role: normalizeAndMapRole(userData.roles),
         image: null,
       },
     });
@@ -51,91 +77,88 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (path === "sign-in/email") {
     try {
+      // CSRF mitigation check
+      const origin = request.headers.get("origin") || request.headers.get("referer");
+      if (origin && !origin.includes(request.headers.get("host") || "")) {
+        return NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 });
+      }
+
       const { email, password } = await request.json();
-
-      if (!email || !password || password.length < 6) {
-        return NextResponse.json({ error: "Invalid credentials. Password must be >= 6 characters." }, { status: 400 });
+      if (!email || !password) {
+        return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
       }
 
-      const role = getRoleFromEmail(email);
-      const name = email.split("@")[0].replace(/[^a-zA-Z]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
-      const sessionToken = `mock_session:${email}:${role}`;
+      // Forward client's IP to the backend to support rate limiting
+      const clientIp = request.headers.get("x-forwarded-for") || (request as any).ip || "";
+      const headers: Record<string, string> = {};
+      if (clientIp) {
+        headers["X-Forwarded-For"] = clientIp;
+      }
+
+      const backendRes = await callBackend("/api/v1/auth/login", "POST", { email, password }, headers);
+
+      if (!backendRes) {
+        return NextResponse.json(
+          { error: "TransitOps authentication server is temporarily unavailable. Please try again later." },
+          { status: 503 }
+        );
+      }
+
+      if (!backendRes.ok) {
+        const errBody = await backendRes.json().catch(() => ({}));
+        let message = errBody.detail || "Invalid email or password";
+        if (backendRes.status === 429) {
+          message = "Too many login attempts. Please try again in 15 minutes.";
+        }
+        return NextResponse.json({ error: message, message }, { status: backendRes.status });
+      }
+
+      const loginData = await backendRes.json();
+      const token = loginData.token;
+      const jwtPayload = decodeJwt(token);
 
       const response = NextResponse.json({
         session: {
-          id: "mock-session-id",
-          userId: "mock-user-id",
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          token: sessionToken,
+          id: token,
+          userId: loginData.user.id,
+          expiresAt: jwtPayload ? new Date(jwtPayload.exp * 1000).toISOString() : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          token: token,
         },
         user: {
-          id: "mock-user-id",
-          email,
-          name,
-          role,
+          id: loginData.user.id,
+          email: loginData.user.email,
+          name: loginData.user.full_name,
+          role: normalizeAndMapRole(loginData.user.roles),
           image: null,
         },
       });
 
-      // Set cookie
-      response.cookies.set("better-auth.session_token", sessionToken, {
+      // Write secure cookie
+      const isProd = process.env.NODE_ENV === "production";
+      const maxAgeSeconds = jwtPayload ? jwtPayload.exp - Math.floor(Date.now() / 1000) : 3600;
+
+      response.cookies.set("better-auth.session_token", token, {
         httpOnly: true,
         path: "/",
-        maxAge: 24 * 60 * 60, // 24 hours
+        maxAge: maxAgeSeconds > 0 ? maxAgeSeconds : 3600,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: isProd,
       });
 
       return response;
     } catch (e) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
-  }
-
-  if (path === "sign-up/email") {
-    try {
-      const { email, password, name } = await request.json();
-
-      if (!email || !password || password.length < 6) {
-        return NextResponse.json({ error: "Password must be >= 6 characters." }, { status: 400 });
-      }
-
-      const role = getRoleFromEmail(email);
-      const displayName = name || email.split("@")[0];
-      const sessionToken = `mock_session:${email}:${role}`;
-
-      const response = NextResponse.json({
-        session: {
-          id: "mock-session-id",
-          userId: "mock-user-id",
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          token: sessionToken,
-        },
-        user: {
-          id: "mock-user-id",
-          email,
-          name: displayName,
-          role,
-          image: null,
-        },
-      });
-
-      // Set cookie
-      response.cookies.set("better-auth.session_token", sessionToken, {
-        httpOnly: true,
-        path: "/",
-        maxAge: 24 * 60 * 60,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-      });
-
-      return response;
-    } catch (e) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request payload format" }, { status: 400 });
     }
   }
 
   if (path === "sign-out") {
+    const sessionToken = request.cookies.get("better-auth.session_token")?.value;
+    if (sessionToken) {
+      await callBackend("/api/v1/auth/logout", "POST", undefined, {
+        "Authorization": `Bearer ${sessionToken}`,
+      });
+    }
+
     const response = NextResponse.json({ success: true });
     response.cookies.delete("better-auth.session_token");
     return response;

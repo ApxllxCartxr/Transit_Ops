@@ -14,11 +14,15 @@ import {
   ShieldAlert, 
   Info,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Undo2
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { isActionAllowed } from "@/lib/rbac-guards";
+import { useToast } from "@/components/ui/toast";
+import { SkeletonTable } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Vehicle {
   id: string;
@@ -43,6 +47,7 @@ interface PaginatedVehicles {
 
 export default function VehiclesPage() {
   const { data: session } = authClient.useSession();
+  const { addToast } = useToast();
   const userRole = (session?.user as any)?.role || "FleetManager";
 
   // Data state
@@ -78,14 +83,6 @@ export default function VehiclesPage() {
   // Action overrides
   const [showReinstatePrompt, setShowReinstatePrompt] = useState(false);
 
-  // Toast / Notifications state
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
   const fetchVehicles = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -114,7 +111,7 @@ export default function VehiclesPage() {
 
   const handleOpenCreate = () => {
     if (!isActionAllowed(userRole, "create", "vehicles")) {
-      showToast("Access Denied: You do not have permission to add vehicles.", "error");
+      addToast("Access Denied: You do not have permission to add vehicles.", "error");
       return;
     }
     setEditingVehicle(null);
@@ -137,7 +134,7 @@ export default function VehiclesPage() {
 
   const handleOpenEdit = (vehicle: Vehicle) => {
     if (!isActionAllowed(userRole, "edit", "vehicles")) {
-      showToast("Access Denied: You do not have permission to edit vehicles.", "error");
+      addToast("Access Denied: You do not have permission to edit vehicles.", "error");
       return;
     }
     setEditingVehicle(vehicle);
@@ -202,10 +199,10 @@ export default function VehiclesPage() {
           payload.reinstate = true;
         }
         await apiClient.patch(`vehicles/${editingVehicle.id}`, payload);
-        showToast("Vehicle updated successfully!");
+        addToast("Vehicle updated successfully!", "success");
       } else {
         await apiClient.post("vehicles", payload);
-        showToast("Vehicle added to registry!");
+        addToast("Vehicle added to registry!", "success");
       }
 
       setDrawerOpen(false);
@@ -217,24 +214,43 @@ export default function VehiclesPage() {
 
   const handleRetire = async (vehicleId: string) => {
     if (!isActionAllowed(userRole, "delete", "vehicles")) {
-      showToast("Access Denied: You do not have permission to retire vehicles.", "error");
+      addToast("Access Denied: You do not have permission to retire vehicles.", "error");
       return;
     }
     
     // Check if on trip
     const v = vehicles.find(item => item.id === vehicleId);
     if (v && v.status === "OnTrip") {
-      showToast("Cannot retire a vehicle while it is currently executing a trip.", "error");
+      addToast("Cannot retire a vehicle while it is currently executing a trip.", "error");
       return;
     }
 
     if (confirm("Are you sure you want to retire this vehicle? This will place a soft-lock on this asset.")) {
       try {
         await apiClient.delete(`vehicles/${vehicleId}`);
-        showToast("Vehicle has been retired.");
+        addToast("Vehicle has been retired.", "success");
         fetchVehicles();
       } catch (err: any) {
-        showToast(err.message || "Failed to retire vehicle.", "error");
+        addToast(err.message || "Failed to retire vehicle.", "error");
+      }
+    }
+  };
+
+  // H12: Handle vehicle reinstatement (requires backend H11)
+  const handleReinstate = async (vehicleId: string) => {
+    if (!isActionAllowed(userRole, "edit", "vehicles")) {
+      addToast("Access Denied: You do not have permission to reinstate vehicles.", "error");
+      return;
+    }
+
+    if (confirm("Are you sure you want to reinstate this vehicle?")) {
+      try {
+        // Call the reinstate endpoint (H11)
+        await apiClient.post(`vehicles/${vehicleId}/reinstate`, {});
+        addToast("Vehicle has been reinstated successfully!", "success");
+        fetchVehicles();
+      } catch (err: any) {
+        addToast(err.message || "Failed to reinstate vehicle.", "error");
       }
     }
   };
@@ -256,18 +272,6 @@ export default function VehiclesPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative">
-      {/* Toast Alert Banner */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl px-4 py-3 shadow-lg border text-sm animate-in fade-in slide-in-from-top-4 duration-300 ${
-          toast.type === "success" 
-            ? "bg-white border-status-success/30 text-status-success dark:bg-slate-900" 
-            : "bg-white border-status-danger/30 text-status-danger dark:bg-slate-900"
-        }`}>
-          {toast.type === "success" ? <Check className="h-4.5 w-4.5" /> : <AlertCircle className="h-4.5 w-4.5" />}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* Header controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -394,8 +398,16 @@ export default function VehiclesPage() {
                 ))
               ) : vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                    No vehicles found matching filters.
+                  <td colSpan={isActionAllowed(userRole, "edit", "vehicles") ? 8 : 7} className="px-6 py-12">
+                    <EmptyState
+                      icon={Car}
+                      title="No vehicles found"
+                      description={search || statusFilter !== "all" || typeFilter !== "all" ? "Try adjusting your filters or search terms" : "Create your first vehicle to get started"}
+                      action={!search && statusFilter === "all" && typeFilter === "all" && isActionAllowed(userRole, "create", "vehicles") ? {
+                        label: "Add Vehicle",
+                        onClick: handleOpenCreate
+                      } : undefined}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -432,11 +444,19 @@ export default function VehiclesPage() {
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          {v.status !== "Retired" && (
+                          {v.status === "Retired" ? (
+                            <button
+                              title="Reinstate Vehicle"
+                              onClick={() => handleReinstate(v.id)}
+                              className="rounded-lg p-1.5 text-status-success hover:bg-status-success/5 dark:hover:bg-status-success/10"
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </button>
+                          ) : (
                             <button
                               title="Retire Asset"
                               onClick={() => handleRetire(v.id)}
-                              className="rounded-lg p-1.5 text-status-danger hover:bg-status-danger/5"
+                              className="rounded-lg p-1.5 text-status-danger hover:bg-status-danger/5 dark:hover:bg-status-danger/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

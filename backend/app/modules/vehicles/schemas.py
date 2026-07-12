@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -43,9 +43,11 @@ class VehicleUpdate(BaseModel):
 
 
 class VehicleOut(VehicleBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
-    created_at: str | None = None
-    updated_at: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class VehicleListResponse(BaseModel):
