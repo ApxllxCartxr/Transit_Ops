@@ -10,6 +10,7 @@ from app.core.db import Base
 from app.modules.vehicles.models import Vehicle  # noqa: F401
 from app.modules.drivers.models import Driver  # noqa: F401
 from app.auth.models import User, Role, UserRole  # noqa: F401
+from app.shared.models import AuditLog  # noqa: F401
 
 config = context.config
 
