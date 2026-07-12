@@ -25,7 +25,7 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(authError.message || "Invalid email or password.");
+        setError(typeof authError === "string" ? authError : authError.message || "Invalid credentials");
       } else {
         router.push("/dashboard");
         router.refresh();
@@ -39,7 +39,7 @@ export default function LoginPage() {
 
   const fillDemoRole = (roleEmail: string) => {
     setEmail(roleEmail);
-    setPassword("password123");
+    setPassword("TransitOps@2026!");
   };
 
   return (
@@ -146,13 +146,13 @@ export default function LoginPage() {
             Demo Credentials & RBAC Profiles
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 text-center">
-            Click a profile to automatically pre-fill login inputs. Use password <strong>password123</strong>.
+            Click a profile to automatically pre-fill login inputs. Use password <strong>TransitOps@2026!</strong>.
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               id="demo-admin"
               type="button"
-              onClick={() => fillDemoRole("admin@transitops.com")}
+              onClick={() => fillDemoRole("admin@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Admin</span>
@@ -161,7 +161,7 @@ export default function LoginPage() {
             <button
               id="demo-fleet"
               type="button"
-              onClick={() => fillDemoRole("fleet@transitops.com")}
+              onClick={() => fillDemoRole("fleet@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Fleet Manager</span>
@@ -170,7 +170,7 @@ export default function LoginPage() {
             <button
               id="demo-dispatch"
               type="button"
-              onClick={() => fillDemoRole("dispatch@transitops.com")}
+              onClick={() => fillDemoRole("dispatch@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Dispatcher</span>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             <button
               id="demo-safety"
               type="button"
-              onClick={() => fillDemoRole("safety@transitops.com")}
+              onClick={() => fillDemoRole("safety@transitops.dev")}
               className="flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Safety Officer</span>
@@ -188,7 +188,7 @@ export default function LoginPage() {
             <button
               id="demo-finance"
               type="button"
-              onClick={() => fillDemoRole("finance@transitops.com")}
+              onClick={() => fillDemoRole("finance@transitops.dev")}
               className="col-span-2 flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/55 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900 transition-colors text-slate-700 dark:text-slate-350"
             >
               <span className="font-semibold">Financial Analyst</span>

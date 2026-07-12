@@ -106,8 +106,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (!backendRes.ok) {
         const errBody = await backendRes.json().catch(() => ({}));
-        // Generic error mapping without leaking internal database states
-        const message = errBody.detail || "Invalid email or password";
+        let message = errBody.detail || "Invalid email or password";
+        if (backendRes.status === 429) {
+          message = "Too many login attempts. Please try again in 15 minutes.";
+        }
         return NextResponse.json({ error: message, message }, { status: backendRes.status });
       }
 
