@@ -58,3 +58,23 @@ export interface PaginatedTrips {
   page: number;
   size: number;
 }
+
+export interface MaintenanceLog {
+  id: string;
+  vehicle_id: string;
+  vehicle_registration_number?: string;
+  vehicle_name?: string;
+  status: "Open" | "Closed";
+  vehicle_status: "Available" | "OnTrip" | "InShop" | "Retired";
+  opened_at: string;
+  closed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PaginatedMaintenance {
+  items: MaintenanceLog[];
+  total: number;
+  page: number;
+  size: number;
+}
