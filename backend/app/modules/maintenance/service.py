@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.db import AsyncSessionLocal
 from app.modules.maintenance.models import MaintenanceLog
@@ -77,6 +78,24 @@ class MaintenanceService:
 
                 await session.flush()
                 return maintenance
+
+    async def list_maintenances(
+        self, *, page: int, size: int, status: str | None = None
+    ) -> tuple[int, list[MaintenanceLog]]:
+        async with AsyncSessionLocal() as session:
+            stmt = select(MaintenanceLog).options(selectinload(MaintenanceLog.vehicle)).order_by(MaintenanceLog.opened_at.desc())
+            count_stmt = select(func.count()).select_from(MaintenanceLog)
+
+            if status is not None:
+                stmt = stmt.where(MaintenanceLog.status == status)
+                count_stmt = count_stmt.where(MaintenanceLog.status == status)
+
+            total_result = await session.execute(count_stmt)
+            total = total_result.scalar_one()
+
+            stmt = stmt.offset((page - 1) * size).limit(size)
+            result = await session.execute(stmt)
+            return total, result.scalars().all()
 
     async def _get_open_maintenance_for_update(
         self, session: AsyncSession, vehicle_id: str
