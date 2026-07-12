@@ -36,6 +36,12 @@ export interface DashboardKpis {
   totalDrivers: number;
 }
 
+export interface ReportsSummary {
+  fuel_efficiency: string;
+  vehicle_roi: string;
+  fleet_utilization: string;
+}
+
 export type TripStatus = "Draft" | "Dispatched" | "Completed" | "Cancelled";
 
 export interface Trip {
