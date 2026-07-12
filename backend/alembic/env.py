@@ -11,6 +11,7 @@ from app.modules.vehicles.models import Vehicle  # noqa: F401
 from app.modules.drivers.models import Driver  # noqa: F401
 from app.modules.trips.models import Trip  # noqa: F401
 from app.modules.maintenance.models import MaintenanceLog  # noqa: F401
+from app.modules.costs.models import FuelLog, Expense  # noqa: F401
 from app.auth.models import User, Role, UserRole  # noqa: F401
 
 config = context.config
