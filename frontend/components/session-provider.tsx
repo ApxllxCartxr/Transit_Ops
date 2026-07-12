@@ -2,6 +2,7 @@
 
 import React from "react";
 import { authClient } from "@/lib/auth-client";
+import { ToastProvider } from "@/components/ui/toast";
 import { Loader2 } from "lucide-react";
 
 interface Props {
@@ -24,5 +25,5 @@ export default function SessionProvider({ children }: Props) {
   }
 
   // Render children regardless of whether session exists; components will react accordingly.
-  return <>{children}</>;
+  return <ToastProvider>{children}</ToastProvider>;
 }

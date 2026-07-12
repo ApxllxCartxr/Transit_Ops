@@ -3,10 +3,13 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Truck, Lock, Mail, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { Truck, Lock, Mail, Eye, EyeOff, Loader2, ShieldAlert, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,13 +28,18 @@ export default function LoginPage() {
       });
 
       if (authError) {
-        setError(typeof authError === "string" ? authError : authError.message || "Invalid credentials");
+        const errorMsg = typeof authError === "string" ? authError : authError.message || "Invalid credentials";
+        setError(errorMsg);
+        addToast(errorMsg, "error");
       } else {
+        addToast("Signed in successfully!", "success");
         router.push("/dashboard");
         router.refresh();
       }
     } catch (err: any) {
-      setError("An unexpected error occurred. Please try again.");
+      const errorMsg = "An unexpected error occurred. Please try again.";
+      setError(errorMsg);
+      addToast(errorMsg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -195,6 +203,20 @@ export default function LoginPage() {
               <span className="text-[10px] text-slate-450 dark:text-slate-500">Expenses, Fuel & ROI Reports</span>
             </button>
           </div>
+        </div>
+
+        {/* Sign Up Link */}
+        <div className="text-center">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Don't have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Create one now
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </p>
         </div>
       </div>
     </div>

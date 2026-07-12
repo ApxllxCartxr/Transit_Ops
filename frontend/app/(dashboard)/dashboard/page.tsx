@@ -14,6 +14,8 @@ import {
   Filter 
 } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
+import { SkeletonKPI } from "@/components/ui/skeleton";
 
 interface DashboardKpis {
   activeVehicles: number;
@@ -29,6 +31,7 @@ interface DashboardKpis {
 }
 
 export default function DashboardPage() {
+  const { addToast } = useToast();
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,12 +52,15 @@ export default function DashboardPage() {
 
       const data = await apiClient.get<DashboardKpis>(`dashboard/kpis?${query.toString()}`);
       setKpis(data);
+      addToast("Dashboard data refreshed successfully", "success");
     } catch (err: any) {
-      setError(err.message || "Failed to fetch dashboard KPIs.");
+      const errorMsg = err.message || "Failed to fetch dashboard KPIs.";
+      setError(errorMsg);
+      addToast(errorMsg, "error");
     } finally {
       setIsLoading(false);
     }
-  }, [vehicleType, vehicleStatus, region]);
+  }, [vehicleType, vehicleStatus, region, addToast]);
 
   useEffect(() => {
     fetchKpis();
@@ -155,11 +161,7 @@ export default function DashboardPage() {
 
       {/* KPI Grid */}
       {isLoading && !kpis ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(7)].map((_, i) => (
-            <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 h-32" />
-          ))}
-        </div>
+        <SkeletonKPI />
       ) : kpis ? (
         <div className="space-y-6">
           {/* Main Hero utilization KPI & secondary KPIs */}
