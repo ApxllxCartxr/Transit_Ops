@@ -3,6 +3,8 @@ Tests ported from BE2 (feat/backend-ops-analytics: Backend/tests/test_ops_rules.
 Adapted to import from app.modules.* (our canonical backend structure).
 """
 
+import asyncio
+
 import pytest
 
 from app.modules.trips.service import TripService
@@ -41,36 +43,36 @@ def report_service():
 
 def test_trip_dispatch_requires_vehicle_and_driver_available(trip_service):
     """V-1 and D-1 are marked unavailable in the placeholder — dispatch must fail."""
-    trip = trip_service.create_trip("T-1", "V-1", "D-1")
+    trip = asyncio.run(trip_service.create_trip("T-1", "V-1", "D-1"))
     with pytest.raises(ValueError):
-        trip_service.dispatch_trip(trip.id)
+        asyncio.run(trip_service.dispatch_trip(trip.id))
 
 
 def test_trip_cancelled_trip_cannot_be_dispatched(trip_service):
-    trip = trip_service.create_trip("T-2", "V-2", "D-2")
-    trip_service.cancel_trip(trip.id)
+    trip = asyncio.run(trip_service.create_trip("T-2", "V-2", "D-2"))
+    asyncio.run(trip_service.cancel_trip(trip.id))
     with pytest.raises(ValueError):
-        trip_service.dispatch_trip(trip.id)
+        asyncio.run(trip_service.dispatch_trip(trip.id))
 
 
 def test_trip_dispatch_succeeds_for_available_vehicle_driver(trip_service):
-    trip = trip_service.create_trip("T-3", "V-2", "D-2")
-    dispatched = trip_service.dispatch_trip(trip.id)
+    trip = asyncio.run(trip_service.create_trip("T-3", "V-2", "D-2"))
+    dispatched = asyncio.run(trip_service.dispatch_trip(trip.id))
     assert dispatched.status == "Dispatched"
 
 
 def test_trip_complete_requires_dispatched_status(trip_service):
-    trip = trip_service.create_trip("T-4", "V-2", "D-2")
+    trip = asyncio.run(trip_service.create_trip("T-4", "V-2", "D-2"))
     with pytest.raises(ValueError):
-        trip_service.complete_trip(trip.id)  # still Draft
+        asyncio.run(trip_service.complete_trip(trip.id))  # still Draft
 
 
 def test_trip_cannot_cancel_completed_trip(trip_service):
-    trip = trip_service.create_trip("T-5", "V-2", "D-2")
-    trip_service.dispatch_trip(trip.id)
-    trip_service.complete_trip(trip.id)
+    trip = asyncio.run(trip_service.create_trip("T-5", "V-2", "D-2"))
+    asyncio.run(trip_service.dispatch_trip(trip.id))
+    asyncio.run(trip_service.complete_trip(trip.id))
     with pytest.raises(ValueError):
-        trip_service.cancel_trip(trip.id)
+        asyncio.run(trip_service.cancel_trip(trip.id))
 
 
 # ---------------------------------------------------------------------------
@@ -78,24 +80,24 @@ def test_trip_cannot_cancel_completed_trip(trip_service):
 # ---------------------------------------------------------------------------
 
 def test_maintenance_opening_sets_vehicle_status_to_inshop(maintenance_service):
-    maintenance = maintenance_service.open_maintenance("V-3")
+    maintenance = asyncio.run(maintenance_service.open_maintenance("V-3"))
     assert maintenance.vehicle_status == "InShop"
 
 
 def test_maintenance_cannot_be_opened_for_vehicle_on_trip(maintenance_service):
     with pytest.raises(ValueError):
-        maintenance_service.open_maintenance("V-4")
+        asyncio.run(maintenance_service.open_maintenance("V-4"))
 
 
 def test_maintenance_cannot_open_duplicate_for_same_vehicle(maintenance_service):
-    maintenance_service.open_maintenance("V-5")
+    asyncio.run(maintenance_service.open_maintenance("V-5"))
     with pytest.raises(ValueError):
-        maintenance_service.open_maintenance("V-5")
+        asyncio.run(maintenance_service.open_maintenance("V-5"))
 
 
 def test_maintenance_close_sets_vehicle_available(maintenance_service):
-    m = maintenance_service.open_maintenance("V-6")
-    closed = maintenance_service.close_maintenance(m.id)
+    m = asyncio.run(maintenance_service.open_maintenance("V-6"))
+    closed = asyncio.run(maintenance_service.close_maintenance(m.id))
     assert closed.vehicle_status == "Available"
 
 
