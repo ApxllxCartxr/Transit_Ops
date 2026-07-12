@@ -2,11 +2,14 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.auth.dependencies import require_roles
 from app.modules.drivers.schemas import DriverCreate, DriverListResponse, DriverOut, DriverUpdate
 from app.modules.drivers.service import DriverService
 from app.shared.enums import DriverStatus
 
 router = APIRouter(prefix="/drivers", tags=["drivers"])
+
+ALL_ROLES = ["Admin", "Fleet Manager", "Dispatcher", "Safety Officer", "Financial Analyst"]
 
 
 def _to_out(driver, service: DriverService) -> DriverOut:
@@ -19,7 +22,11 @@ def _to_out(driver, service: DriverService) -> DriverOut:
     )
 
 
-@router.get("", response_model=DriverListResponse)
+@router.get(
+    "",
+    response_model=DriverListResponse,
+    dependencies=[Depends(require_roles(*ALL_ROLES))],
+)
 async def list_drivers(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -40,21 +47,34 @@ async def list_drivers(
     )
 
 
-@router.post("", response_model=DriverOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=DriverOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles("Admin", "Safety Officer"))],
+)
 async def create_driver(payload: DriverCreate, db: AsyncSession = Depends(get_db)):
     service = DriverService(db)
     driver = await service.create_driver(payload)
     return _to_out(driver, service)
 
 
-@router.get("/{driver_id}", response_model=DriverOut)
+@router.get(
+    "/{driver_id}",
+    response_model=DriverOut,
+    dependencies=[Depends(require_roles(*ALL_ROLES))],
+)
 async def get_driver(driver_id: str, db: AsyncSession = Depends(get_db)):
     service = DriverService(db)
     driver = await service.get_driver(driver_id)
     return _to_out(driver, service)
 
 
-@router.patch("/{driver_id}", response_model=DriverOut)
+@router.patch(
+    "/{driver_id}",
+    response_model=DriverOut,
+    dependencies=[Depends(require_roles("Admin", "Safety Officer"))],
+)
 async def update_driver(
     driver_id: str, payload: DriverUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -63,7 +83,12 @@ async def update_driver(
     return _to_out(driver, service)
 
 
-@router.delete("/{driver_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{driver_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_roles("Admin", "Safety Officer"))],
+)
 async def delete_driver(driver_id: str, db: AsyncSession = Depends(get_db)):
     service = DriverService(db)
     await service.delete_driver(driver_id)
+
