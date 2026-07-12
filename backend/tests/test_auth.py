@@ -41,7 +41,6 @@ import httpx
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.auth.models import User
-from app.auth.router import limiter
 from app.auth.security import hash_password
 from app.core.config import get_settings
 from app.main import app
@@ -59,17 +58,6 @@ _SessionLocal = async_sessionmaker(_engine, expire_on_commit=False)
 ADMIN_EMAIL = "admin@transitops.dev"
 ADMIN_PASSWORD = "TransitOps@2026!"
 BASE = "http://test"
-
-
-# ---------------------------------------------------------------------------
-# Disable rate limiting for testing
-# ---------------------------------------------------------------------------
-@pytest.fixture(autouse=True)
-def disable_rate_limiter():
-    """Disable slowapi rate-limiting for the duration of tests."""
-    limiter.enabled = False
-    yield
-    limiter.enabled = True
 
 
 # ---------------------------------------------------------------------------
